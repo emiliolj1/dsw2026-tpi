@@ -6,4 +6,5 @@ public abstract class EntityBase(Guid? id = null)
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public bool Deleted { get; set; }
 }
