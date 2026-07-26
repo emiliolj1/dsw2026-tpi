@@ -16,6 +16,10 @@ public class PersistenceEf: IPersistence
 
     public async Task<T> Add<T>(T entity) where T : EntityBase
     {
+        var now = DateTime.UtcNow;
+        entity.CreatedAt = now;
+        entity.UpdatedAt = now;
+        entity.Deleted = false;
         await _context.AddAsync(entity);
         await _context.SaveChangesAsync();
         return entity;
@@ -23,34 +27,36 @@ public class PersistenceEf: IPersistence
 
     public async Task<T> Delete<T>(T entity) where T : EntityBase
     {
-        var a = entity.Id;
-        _context.Remove(entity);
+        entity.Deleted = true;
+        entity.UpdatedAt = DateTime.UtcNow;
+        _context.Update(entity);
         await _context.SaveChangesAsync();
         return entity;
     }
 
     public async Task<T?> First<T>(Expression<Func<T, bool>> predicate, params string[] include) where T : EntityBase
     {
-        return await Include(_context.Set<T>(), include).FirstOrDefaultAsync(predicate);
+        return await Include(_context.Set<T>(), include).Where(e => !e.Deleted).FirstOrDefaultAsync(predicate);
     }
 
     public async Task<IEnumerable<T>?> GetAll<T>(params string[] include) where T : EntityBase
     {
-        return await Include(_context.Set<T>(), include).ToListAsync();
+        return await Include(_context.Set<T>(), include).Where(e => !e.Deleted).ToListAsync();
     }
 
     public async Task<T?> GetById<T>(Guid id, params string[] include) where T : EntityBase
     {
-        return await Include(_context.Set<T>(), include).FirstOrDefaultAsync(e => e.Id == id);
+        return await Include(_context.Set<T>(), include).FirstOrDefaultAsync(e => e.Id == id && !e.Deleted);
     }
 
     public async Task<IEnumerable<T>?> GetFiltered<T>(Expression<Func<T, bool>> predicate, params string[] include) where T : EntityBase
     {
-        return await Include(_context.Set<T>(), include).Where(predicate).ToListAsync();
+        return await Include(_context.Set<T>(), include).Where(e => !e.Deleted).Where(predicate).ToListAsync();
     }
 
     public async Task<T> Update<T>(T entity) where T : EntityBase
     {
+        entity.UpdatedAt = DateTime.UtcNow;
         _context.Update(entity);
         await _context.SaveChangesAsync();
         return entity;
@@ -62,6 +68,7 @@ public class PersistenceEf: IPersistence
         pageIndex = Math.Abs(pageIndex) == 0 ? 0 : Math.Abs(pageIndex) - 1;
 
         var filtered = Include(_context.Set<T>(), includes)
+                 .Where(e => !e.Deleted)
                  .Where(predicate)
                  .OrderBy(sortOrder);
 
