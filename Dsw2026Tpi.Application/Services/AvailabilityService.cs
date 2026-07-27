@@ -5,6 +5,8 @@ using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Interfaces;
 using System.Globalization;
 using System.Text;
+using Dsw2026Tpi.Application.Options;
+using Microsoft.Extensions.Options;
 
 namespace Dsw2026Tpi.Application.Services
 {
@@ -14,13 +16,22 @@ namespace Dsw2026Tpi.Application.Services
 
         private readonly IPersistence _persistence;
         private readonly IAvailabilityPersistence _availabilityPersistence;
+        private readonly HashSet<DateOnly> _nonWorkingDays;
 
         public AvailabilityService(
-            IPersistence persistence,
-            IAvailabilityPersistence availabilityPersistence)
+             IPersistence persistence,
+             IAvailabilityPersistence availabilityPersistence,
+             IOptions<NonWorkingDaysOptions> nonWorkingDaysOptions)
         {
             _persistence = persistence;
             _availabilityPersistence = availabilityPersistence;
+
+            _nonWorkingDays = nonWorkingDaysOptions.Value.Dates
+                .Select(date => DateOnly.ParseExact(
+                    date,
+                    "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture))
+                .ToHashSet();
         }
 
         public async Task<IEnumerable<AvailabilityModel.MonthlyPlanningResponse>> GetMonthlyPlanning(Guid doctorId)
@@ -248,7 +259,7 @@ namespace Dsw2026Tpi.Application.Services
             }
         }
 
-        private static List<Availability> GenerateSlots(
+        private List<Availability> GenerateSlots(
             Guid doctorId,
             IEnumerable<ScheduleRange> ranges,
             DateOnly today,
@@ -263,6 +274,9 @@ namespace Dsw2026Tpi.Application.Services
 
             for (var date = today; date < nextMonth; date = date.AddDays(1))
             {
+                if (_nonWorkingDays.Contains(date))
+                    continue;
+
                 if (!rangesByDay.TryGetValue(date.DayOfWeek, out var dayRanges))
                     continue;
 
