@@ -3,6 +3,7 @@ using Dsw2026Tpi.Api.Middlewares;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Serilog;
+using Dsw2026Tpi.Application.Interfaces;
 
 namespace Dsw2026Tpi.Api;
 
@@ -28,11 +29,19 @@ public class Program
             builder.Services.AddSwaggerConfiguration();
             builder.Services.AddApplicationPersistence(builder.Configuration);
             builder.Services.AddAppCors(builder.Configuration);
-            builder.Services.AddAppDependencies();
+            builder.Services.AddAppDependencies(builder.Configuration);
             builder.Services.AddControllers();
             builder.Services.AddHealthChecks();
 
             var app = builder.Build();
+
+            await using (var scope = app.Services.CreateAsyncScope())
+            {
+                var initialAdminSeeder =
+                    scope.ServiceProvider.GetRequiredService<IInitialAdminSeeder>();
+
+                await initialAdminSeeder.SeedAsync();
+            }
 
             app.UseSerilogRequestLogging();
 
