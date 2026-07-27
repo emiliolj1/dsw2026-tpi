@@ -22,7 +22,7 @@ namespace Dsw2026Tpi.Domain.Entities
         #endregion
         public Availability(Guid doctorId, DateOnly date, TimeOnly startTime, Guid? id = null) : base(id)
         {
-            if (DoctorId == Guid.Empty)
+            if (doctorId == Guid.Empty)
                 throw new ArgumentException("DoctorId cannot be empty.", nameof(doctorId));
 
             DoctorId = doctorId;
