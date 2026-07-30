@@ -1,11 +1,11 @@
 ﻿namespace Dsw2026Tpi.Domain.Entities;
 
-public class Doctor: EntityBase
+public class Doctor : EntityBase
 {
-    public string Name { get; init; }
-    public string LicenseNumber { get; init; }
+    public string Name { get; private set; }
+    public string LicenseNumber { get; private set; }
     public bool IsActive { get; private set; }
-    public Guid? SpecialityId { get; set; }
+    public Guid? SpecialityId { get; private set; }
     public Speciality? Speciality { get; private set; }
 
     #region Constructor for EF
@@ -16,12 +16,28 @@ public class Doctor: EntityBase
 #pragma warning restore CS8618
     #endregion
 
-    public Doctor(string name, string licenseNumber, Speciality speciality, Guid? id = null) : base(id)
+    public Doctor(
+        string name,
+        string licenseNumber,
+        Speciality speciality,
+        Guid? id = null) : base(id)
     {
         Name = name;
         LicenseNumber = licenseNumber;
+        SpecialityId = speciality.Id;
         Speciality = speciality;
         IsActive = true;
+    }
+
+    public void Update(
+        string name,
+        string licenseNumber,
+        Speciality speciality)
+    {
+        Name = name;
+        LicenseNumber = licenseNumber;
+        SpecialityId = speciality.Id;
+        Speciality = speciality;
     }
 
     public void Deactivate()
