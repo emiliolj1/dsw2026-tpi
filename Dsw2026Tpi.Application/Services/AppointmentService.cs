@@ -22,9 +22,16 @@ public class AppointmentService : IAppointmentService
         _appointmentPersistence = appointmentPersistence;
     }
 
-    public async Task Create(AppointmentModel.Request request)
+    public async Task Create(AppointmentModel.Request request, string patientEmail)
     {
         var reason = ValidateRequest(request);
+
+        var patient = await GetAuthenticatedPatient(patientEmail);
+
+        if (patient.Dni != request.Patient.Dni)
+        {
+            throw new AuthorizationException();
+        }
 
         var doctor = await _persistence.GetById<Doctor>(request.DoctorId);
 
@@ -33,11 +40,6 @@ public class AppointmentService : IAppointmentService
 
         if (!doctor.IsActive)
             throw new ValidationException().WithDetail(nameof(request.DoctorId), "El médico no se encuentra activo.");
-
-        var patient = await _persistence.First<Patient>(current => current.Dni == request.Patient.Dni);
-
-        if (patient is null)
-            throw new EntityNotFoundException(nameof(Patient));
 
         var availability = await _persistence.GetById<Availability>(request.AvailabilityId);
 
@@ -60,33 +62,72 @@ public class AppointmentService : IAppointmentService
             throw new ConflictException("No se pudo crear la cita", "APPOINTMENT_CREATION_CONFLICT");
      }
 
-    public async Task<IEnumerable<AppointmentModel.Response>> GetActiveByPatient(long dni)
+    public async Task<IEnumerable<AppointmentModel.Response>>GetActiveByPatient(long dni, string patientEmail)
     {
         ValidateDni(dni, nameof(dni));
 
-        var appointments = await _persistence.GetFiltered<Appointment>(appointment =>
-            appointment.Patient != null && appointment.Patient.Dni == dni && appointment.Status == AppointmentStatus.BOOKED, AppointmentIncludes) ?? [];
+        var patient = await GetAuthenticatedPatient(patientEmail);
 
-        return appointments.OrderBy(appointment => appointment.Availability!.Date).ThenBy(appointment => appointment.Availability!.StartTime).Select(ToResponse);
+        if (patient.Dni != dni)
+        {
+            throw new AuthorizationException();
+        }
+
+        var appointments =
+            await _persistence.GetFiltered<Appointment>(
+                appointment =>
+                    appointment.PatientId == patient.Id &&
+                    appointment.Status == AppointmentStatus.BOOKED,
+                AppointmentIncludes)
+            ?? [];
+
+        return appointments
+            .OrderBy(appointment =>
+                appointment.Availability!.Date)
+            .ThenBy(appointment =>
+                appointment.Availability!.StartTime)
+            .Select(ToResponse);
     }
 
-    public async Task Cancel(Guid appointmentId)
+    public async Task Cancel(Guid appointmentId, string patientEmail)
     {
         if (appointmentId == Guid.Empty)
-            throw new ValidationException().WithDetail(nameof(appointmentId), "Es obligatorio.");
+        {
+            throw new ValidationException()
+                .WithDetail(
+                    nameof(appointmentId),
+                    "Es obligatorio.");
+        }
 
-        var appointment = await _persistence.GetById<Appointment>(appointmentId);
+        var patient = await GetAuthenticatedPatient(patientEmail);
+
+        var appointment =
+            await _persistence.First<Appointment>(
+                current =>
+                    current.Id == appointmentId &&
+                    current.PatientId == patient.Id);
 
         if (appointment is null)
+        {
             throw new EntityNotFoundException(nameof(Appointment));
+        }
 
         if (appointment.Status != AppointmentStatus.BOOKED)
-            throw new ConflictException("Solo se puede cancelar una cita en estado BOOKED.", "APPOINTMENT_STATUS_CONFLICT");
+        {
+            throw new ConflictException(
+                "Solo se puede cancelar una cita en estado BOOKED.",
+                "APPOINTMENT_STATUS_CONFLICT");
+        }
 
-        var cancelled = await _appointmentPersistence.TryCancel(appointmentId);
+        var cancelled =
+            await _appointmentPersistence.TryCancel(appointmentId);
 
         if (!cancelled)
-            throw new ConflictException("La cita no pudo cancelarse porque fue modificada.", "APPOINTMENT_CONCURRENCY_CONFLICT");
+        {
+            throw new ConflictException(
+                "La cita no pudo cancelarse porque fue modificada.",
+                "APPOINTMENT_CONCURRENCY_CONFLICT");
+        }
     }
 
     public async Task<IEnumerable<AppointmentModel.Response>> GetByDate(DateOnly date)
@@ -113,6 +154,22 @@ public class AppointmentService : IAppointmentService
             appointment => appointment.Availability!.Date, AppointmentIncludes);
 
         return new AppointmentModel.PagedResponse(appointments.Data.Select(ToResponse), appointments.Total, appointments.PageSize, appointments.PageIndex);
+    }
+
+    private async Task<Patient> GetAuthenticatedPatient(string patientEmail)
+    {
+        if (string.IsNullOrWhiteSpace(patientEmail))
+        {
+            throw new AuthenticationException();
+        }
+
+        var normalizedEmail =
+            Patient.NormalizeEmail(patientEmail);
+
+        return await _persistence.First<Patient>(
+            patient =>
+                patient.NormalizedEmail == normalizedEmail)
+            ?? throw new AuthenticationException();
     }
 
     private static string ValidateRequest(AppointmentModel.Request request)
