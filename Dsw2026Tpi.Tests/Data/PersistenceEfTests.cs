@@ -2,6 +2,7 @@
 using Dsw2026Tpi.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
+using Dsw2026Tpi.Data.Repositories;
 namespace Dsw2026Tpi.Tests.Data;
 
 public class PersistenceEfTests

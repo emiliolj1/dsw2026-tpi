@@ -3,7 +3,7 @@ using Dsw2026Tpi.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 
-namespace Dsw2026Tpi.Data
+namespace Dsw2026Tpi.Data.Repositories
 {
     public class AppointmentPersistenceEf : IAppointmentPersistence
     {

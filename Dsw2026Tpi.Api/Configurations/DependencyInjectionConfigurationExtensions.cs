@@ -5,6 +5,7 @@ using Dsw2026Tpi.Application.Services;
 using Dsw2026Tpi.Data;
 using Dsw2026Tpi.Domain.Interfaces;
 using System.Globalization;
+using Dsw2026Tpi.Data.Repositories;
 
 namespace Dsw2026Tpi.Api.Configurations;
 
