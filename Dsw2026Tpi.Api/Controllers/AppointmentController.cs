@@ -1,6 +1,7 @@
 ﻿using Dsw2026Tpi.Application.Dtos;
 using Dsw2026Tpi.Application.Interfaces;
 using Dsw2026Tpi.CrossCutting.Identity;
+using Dsw2026Tpi.CrossCutting.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,7 +27,7 @@ public class AppointmentController : AppController
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create([FromBody] AppointmentModel.Request request)
     {
-        await _service.Create(request);
+        await _service.Create(request, GetAuthenticatedPatientEmail());
 
         return StatusCode(StatusCodes.Status201Created);
     }
@@ -39,7 +40,7 @@ public class AppointmentController : AppController
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetActiveByPatient([FromQuery] long dni)
     {
-        var appointments = await _service.GetActiveByPatient(dni);
+        var appointments = await _service.GetActiveByPatient(dni, GetAuthenticatedPatientEmail());
 
         return Ok(appointments);
     }
@@ -54,7 +55,7 @@ public class AppointmentController : AppController
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Cancel([FromRoute] Guid id)
     {
-        await _service.Cancel(id);
+        await _service.Cancel(id, GetAuthenticatedPatientEmail());
 
         return NoContent();
     }
@@ -91,5 +92,15 @@ public class AppointmentController : AppController
 
         return Ok(appointments);
     }
+    private string GetAuthenticatedPatientEmail()
+    {
+        var email = User.Identity?.Name;
 
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            throw new AuthenticationException();
+        }
+
+        return email;
+    }
 }
