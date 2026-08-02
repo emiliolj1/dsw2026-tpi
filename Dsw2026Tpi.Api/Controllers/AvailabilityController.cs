@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Mvc;
 namespace Dsw2026Tpi.Api.Controllers;
 
 [Route("availabilities")]
-[Authorize(Policy = Policies.AdminPolicy)]
 public class AvailabilityController : AppController
 {
     private readonly IAvailabilityService _service;
@@ -18,6 +17,7 @@ public class AvailabilityController : AppController
     }
 
     [HttpPost]
+    [Authorize(Policy = Policies.AdminPolicy)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -29,6 +29,7 @@ public class AvailabilityController : AppController
     }
 
     [HttpPut]
+    [Authorize(Policy = Policies.AdminPolicy)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -37,5 +38,20 @@ public class AvailabilityController : AppController
         await _service.Update(request);
 
         return NoContent();
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Policies.PatientPolicy)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetAvailableSlots(
+    [FromQuery] Guid doctorId)
+    {
+        var availabilities = await _service.GetAvailableSlots(doctorId);
+
+        return Ok(availabilities);
     }
 }
