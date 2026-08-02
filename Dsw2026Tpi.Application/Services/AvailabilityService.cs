@@ -34,6 +34,39 @@ namespace Dsw2026Tpi.Application.Services
                 .ToHashSet();
         }
 
+        public async Task<IEnumerable<AvailabilityModel.AvailableSlotResponse>> GetAvailableSlots(Guid doctorId)
+        {
+            ValidateDoctorId(doctorId);
+            await EnsureDoctorExists(doctorId);
+
+            var now = DateTime.Now;
+            var today = DateOnly.FromDateTime(now);
+            var currentTime = TimeOnly.FromDateTime(now);
+
+            var availabilities =
+                await _persistence.GetFiltered<Availability>(availability =>
+                    availability.DoctorId == doctorId &&
+                    availability.Status == AvailabilityStatus.Available &&
+                    (availability.Date > today ||
+                     availability.Date == today &&
+                     availability.StartTime >= currentTime)) ?? [];
+
+            return availabilities
+                .OrderBy(availability => availability.Date)
+                .ThenBy(availability => availability.StartTime)
+                .Select(availability =>
+                    new AvailabilityModel.AvailableSlotResponse(
+                        availability.Id,
+                        availability.DoctorId,
+                        availability.Date,
+                        availability.StartTime.ToString(
+                            "HH:mm",
+                            CultureInfo.InvariantCulture),
+                        availability.EndTime.ToString(
+                            "HH:mm",
+                            CultureInfo.InvariantCulture)));
+        }
+
         public async Task<IEnumerable<AvailabilityModel.MonthlyPlanningResponse>> GetMonthlyPlanning(Guid doctorId)
         {
             ValidateDoctorId(doctorId);

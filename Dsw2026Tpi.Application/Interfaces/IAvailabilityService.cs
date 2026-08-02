@@ -9,5 +9,7 @@ namespace Dsw2026Tpi.Application.Interfaces
         Task Create(AvailabilityModel.Request request);
 
         Task Update(AvailabilityModel.Request request);
+
+        Task<IEnumerable<AvailabilityModel.AvailableSlotResponse>> GetAvailableSlots(Guid doctorId);
     }
 }
