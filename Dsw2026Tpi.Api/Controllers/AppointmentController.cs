@@ -4,6 +4,7 @@ using Dsw2026Tpi.CrossCutting.Identity;
 using Dsw2026Tpi.CrossCutting.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Dsw2026Tpi.Api.Controllers;
 
@@ -27,7 +28,9 @@ public class AppointmentController : AppController
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create([FromBody] AppointmentModel.Request request)
     {
-        await _service.Create(request, GetAuthenticatedPatientEmail());
+        await _service.Create(
+    request,
+    GetAuthenticatedPatientUserId());
 
         return StatusCode(StatusCodes.Status201Created);
     }
@@ -40,7 +43,9 @@ public class AppointmentController : AppController
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetActiveByPatient([FromQuery] long dni)
     {
-        var appointments = await _service.GetActiveByPatient(dni, GetAuthenticatedPatientEmail());
+        var appointments = await _service.GetActiveByPatient(
+     dni,
+     GetAuthenticatedPatientUserId());
 
         return Ok(appointments);
     }
@@ -55,7 +60,9 @@ public class AppointmentController : AppController
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Cancel([FromRoute] Guid id)
     {
-        await _service.Cancel(id, GetAuthenticatedPatientEmail());
+        await _service.Cancel(
+    id,
+    GetAuthenticatedPatientUserId());
 
         return NoContent();
     }
@@ -92,15 +99,18 @@ public class AppointmentController : AppController
 
         return Ok(appointments);
     }
-    private string GetAuthenticatedPatientEmail()
+    private Guid GetAuthenticatedPatientUserId()
     {
-        var email = User.Identity?.Name;
+        var userId = User
+            .FindFirst(ClaimTypes.NameIdentifier)?
+            .Value;
 
-        if (string.IsNullOrWhiteSpace(email))
+        if (!Guid.TryParse(userId, out var patientUserId) ||
+            patientUserId == Guid.Empty)
         {
             throw new AuthenticationException();
         }
 
-        return email;
+        return patientUserId;
     }
 }

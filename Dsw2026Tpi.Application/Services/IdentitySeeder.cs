@@ -11,13 +11,13 @@ namespace Dsw2026Tpi.Application.Services;
 public sealed class IdentitySeeder : IInitialAdminSeeder
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly RoleManager<IdentityRole> _roleManager;
+    private readonly RoleManager<IdentityRole<Guid>> _roleManager;
     private readonly InitialAdminOptions _options;
     private readonly ILogger<IdentitySeeder> _logger;
 
     public IdentitySeeder(
         UserManager<ApplicationUser> userManager,
-        RoleManager<IdentityRole> roleManager,
+        RoleManager<IdentityRole<Guid>> roleManager,
         IOptions<InitialAdminOptions> options,
         ILogger<IdentitySeeder> logger)
     {
@@ -116,7 +116,7 @@ public sealed class IdentitySeeder : IInitialAdminSeeder
         }
 
         var result = await _roleManager.CreateAsync(
-            new IdentityRole(roleName));
+            new IdentityRole<Guid>(roleName));
 
         if (!result.Succeeded)
         {

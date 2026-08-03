@@ -22,11 +22,13 @@ public class AppointmentService : IAppointmentService
         _appointmentPersistence = appointmentPersistence;
     }
 
-    public async Task Create(AppointmentModel.Request request, string patientEmail)
+    public async Task Create(
+    AppointmentModel.Request request,
+    Guid patientUserId)
     {
         var reason = ValidateRequest(request);
 
-        var patient = await GetAuthenticatedPatient(patientEmail);
+        var patient = await GetAuthenticatedPatient(patientUserId);
 
         if (patient.Dni != request.Patient.Dni)
         {
@@ -62,11 +64,14 @@ public class AppointmentService : IAppointmentService
             throw new ConflictException("No se pudo crear la cita", "APPOINTMENT_CREATION_CONFLICT");
      }
 
-    public async Task<IEnumerable<AppointmentModel.Response>>GetActiveByPatient(long dni, string patientEmail)
+    public async Task<IEnumerable<AppointmentModel.Response>>
+    GetActiveByPatient(
+        long dni,
+        Guid patientUserId)
     {
         ValidateDni(dni, nameof(dni));
 
-        var patient = await GetAuthenticatedPatient(patientEmail);
+        var patient = await GetAuthenticatedPatient(patientUserId);
 
         if (patient.Dni != dni)
         {
@@ -89,7 +94,9 @@ public class AppointmentService : IAppointmentService
             .Select(ToResponse);
     }
 
-    public async Task Cancel(Guid appointmentId, string patientEmail)
+    public async Task Cancel(
+    Guid appointmentId,
+    Guid patientUserId)
     {
         if (appointmentId == Guid.Empty)
         {
@@ -99,7 +106,7 @@ public class AppointmentService : IAppointmentService
                     "Es obligatorio.");
         }
 
-        var patient = await GetAuthenticatedPatient(patientEmail);
+        var patient = await GetAuthenticatedPatient(patientUserId);
 
         var appointment =
             await _persistence.First<Appointment>(
@@ -156,19 +163,16 @@ public class AppointmentService : IAppointmentService
         return new AppointmentModel.PagedResponse(appointments.Data.Select(ToResponse), appointments.Total, appointments.PageSize, appointments.PageIndex);
     }
 
-    private async Task<Patient> GetAuthenticatedPatient(string patientEmail)
+    private async Task<Patient> GetAuthenticatedPatient(
+    Guid patientUserId)
     {
-        if (string.IsNullOrWhiteSpace(patientEmail))
+        if (patientUserId == Guid.Empty)
         {
             throw new AuthenticationException();
         }
 
-        var normalizedEmail =
-            Patient.NormalizeEmail(patientEmail);
-
         return await _persistence.First<Patient>(
-            patient =>
-                patient.NormalizedEmail == normalizedEmail)
+            patient => patient.UserId == patientUserId)
             ?? throw new AuthenticationException();
     }
 

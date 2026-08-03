@@ -6,29 +6,36 @@ namespace Dsw2026Tpi.Domain.Entities;
 
 public class Patient : EntityBase
 {
-    public string Email { get; private set; }
-    public string NormalizedEmail { get; private set; }
+    public Guid UserId { get; private set; }
     public long Dni { get; private set; }
-
-    #region Constructor for EF
-#pragma warning disable CS8618
+    public string? FullName { get; private set; }
     private Patient()
     {
     }
-#pragma warning restore CS8618
-    #endregion
-
-    public Patient(string email, long dni, Guid? id = null) : base(id)
+    public Patient(
+        Guid userId,
+        long dni,
+        string? fullName = null,
+        Guid? id = null) : base(id)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(email);
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "El identificador del usuario es obligatorio.",
+                nameof(userId));
+        }
 
-        Email = email.Trim();
-        NormalizedEmail = NormalizeEmail(email);
+        var normalizedFullName = fullName?.Trim();
+
+        if (normalizedFullName is { Length: > 150 })
+        {
+            throw new ArgumentException(
+                "El nombre completo no puede superar los 150 caracteres.",
+                nameof(fullName));
+        }
+
+        UserId = userId;
         Dni = dni;
-    }
-
-    public static string NormalizeEmail(string email)
-    {
-        return email.Trim().ToUpperInvariant();
+        FullName = normalizedFullName;
     }
 }
