@@ -95,7 +95,7 @@ public static class SecurityConfigurationExtensions
                 RequireDigit = true
             };
 
-        }).AddRoles<IdentityRole>()
+        }).AddRoles<IdentityRole<Guid>>()
           .AddEntityFrameworkStores<AuthenticationDbContext>()
           .AddSignInManager()
           .AddDefaultTokenProviders();

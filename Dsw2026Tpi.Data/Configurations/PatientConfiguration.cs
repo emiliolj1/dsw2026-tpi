@@ -13,18 +13,17 @@ public class PatientConfiguration : IEntityTypeConfiguration<Patient>
     {
         builder.ToTable("Patients");
 
-        builder.Property(patient => patient.Email)
-            .IsRequired()
-            .HasMaxLength(254);
-
-        builder.Property(patient => patient.NormalizedEmail)
-            .IsRequired()
-            .HasMaxLength(254);
+        builder.Property(patient => patient.UserId)
+            .IsRequired();
 
         builder.Property(patient => patient.Dni)
             .IsRequired();
 
-        builder.HasIndex(patient => patient.NormalizedEmail)
+        builder.Property(patient => patient.FullName)
+            .HasMaxLength(150)
+            .IsRequired(false);
+
+        builder.HasIndex(patient => patient.UserId)
             .IsUnique();
 
         builder.HasIndex(patient => patient.Dni)
