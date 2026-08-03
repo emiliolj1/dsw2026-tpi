@@ -5,7 +5,7 @@ public class Doctor : EntityBase
     public string Name { get; private set; }
     public string LicenseNumber { get; private set; }
     public bool IsActive { get; private set; }
-    public Guid? SpecialityId { get; private set; }
+    public Guid SpecialityId { get; private set; }
     public Speciality? Speciality { get; private set; }
 
     #region Constructor for EF

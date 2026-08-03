@@ -3,7 +3,7 @@ using Dsw2026Tpi.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
-namespace Dsw2026Tpi.Data;
+namespace Dsw2026Tpi.Data.Repositories;
 
 public class PersistenceEf: IPersistence
 {
