@@ -32,6 +32,8 @@ public static class DependencyInjectionConfigurationExtensions
         services.AddScoped<ISignInService, SignInService>();
 
         services.AddSingleton<JwtService>();
+        services.AddSingleton<ITokenRevocationService,
+            TokenRevocationService>();
 
         return services;
     }

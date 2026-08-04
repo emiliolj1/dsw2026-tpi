@@ -67,7 +67,11 @@ public class JwtService
 
             new Claim(
                 ClaimTypes.Role,
-                role)
+                role),
+
+            new Claim(
+                JwtRegisteredClaimNames.Jti,
+                Guid.NewGuid().ToString())
         };
 
         var key = new SymmetricSecurityKey(
