@@ -126,6 +126,9 @@
   <data name="ENTITY_NOTFOUND" xml:space="preserve">
     <value>La entidad {0} no se encontró</value>
   </data>
+  <data name="RATE_LIMIT_EXCEEDED" xml:space="preserve">
+    <value>Se excedió el límite de solicitudes. Intente nuevamente más tarde.</value>
+  </data>
   <data name="REGISTER_USER_CONFLICT" xml:space="preserve">
     <value>Se produjo un error al registrar el usuario</value>
   </data>

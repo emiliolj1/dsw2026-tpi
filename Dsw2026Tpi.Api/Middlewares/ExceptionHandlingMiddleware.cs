@@ -2,7 +2,6 @@
 using Dsw2026Tpi.CrossCutting.Models;
 using Dsw2026Tpi.CrossCutting.Resources;
 using System.Net;
-using System.Text.Json;
 
 namespace Dsw2026Tpi.Api.Middlewares;
 
@@ -44,9 +43,10 @@ public class ExceptionHandlingMiddleware
             AuthorizationException => HttpStatusCode.Forbidden,
             _ => HttpStatusCode.InternalServerError,
         };
-        var result = JsonSerializer.Serialize(error);
-        context.Response.ContentType = "application/json";
         context.Response.StatusCode = (int)status;
-        await context.Response.WriteAsync(result);
+
+        await context.Response.WriteAsJsonAsync(
+            error,
+            context.RequestAborted);
     }
 }
