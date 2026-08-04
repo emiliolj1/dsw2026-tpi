@@ -62,7 +62,7 @@ El uso de `dotnet-ef` 10.0.9 es opcional y solamente resulta necesario si se pre
 2. Seleccionar **Clonar un repositorio**.
 3. Ingresar la URL `https://github.com/emiliolj1/dsw2026-tpi.git`.
 4. Una vez clonado, seleccionar la rama `development` desde el selector de ramas de Git.
-5. Abrir el archivo de solución `.sln` ubicado en la raíz del repositorio.
+5. Abrir el archivo de solución `Dsw2026Tpi.slnx` ubicado en la raíz del repositorio.
 6. Esperar a que Visual Studio restaure automáticamente los paquetes NuGet. Si fuera necesario, hacer clic derecho sobre la solución y seleccionar **Restaurar paquetes NuGet**.
 
 La solución agrupa los proyectos de API, aplicación, dominio, persistencia, componentes transversales y pruebas, de acuerdo con el modelo en capas trabajado en la materia.
@@ -224,6 +224,7 @@ En Swagger, presionar `Authorize` e ingresar `Bearer` seguido del token.
 |---|---|---|---|
 | POST | `/api/auth/admin/login` | Público | Autentica al administrador inicial |
 | POST | `/api/auth/patient/login` | Público | Autentica o registra automáticamente a un paciente |
+| POST | `/api/auth/logout` | Administrador o Paciente | Revoca el token JWT utilizado en la solicitud |
 
 ### Especialidades
 
@@ -387,7 +388,7 @@ Para ejecutar las pruebas automatizadas:
 2. Seleccionar **Ejecutar todas las pruebas**.
 3. Verificar que el panel informe todas las pruebas aprobadas, sin fallos ni pruebas omitidas.
 
-El proyecto cuenta actualmente con 46 pruebas unitarias y de integración para servicios, persistencia, autenticación, autorización y rate limiting.
+El proyecto cuenta con pruebas unitarias y de integración para servicios, persistencia, autenticación, autorización, revocación de tokens y rate limiting.
 
 Los comandos equivalentes desde una terminal son:
 

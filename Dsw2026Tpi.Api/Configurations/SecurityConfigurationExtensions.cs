@@ -1,4 +1,5 @@
-﻿using Dsw2026Tpi.CrossCutting.Identity;
+﻿using Dsw2026Tpi.Application.Interfaces;
+using Dsw2026Tpi.CrossCutting.Identity;
 using Dsw2026Tpi.Data.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Dsw2026Tpi.CrossCutting.Models;
 using Dsw2026Tpi.CrossCutting.Resources;
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 
 namespace Dsw2026Tpi.Api.Configurations;
@@ -30,6 +32,7 @@ public static class SecurityConfigurationExtensions
         })
             .AddJwtBearer(options =>
             {
+                options.MapInboundClaims = false;
                 //Definir parámetros para la generación del token
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
@@ -43,6 +46,24 @@ public static class SecurityConfigurationExtensions
                 };
                 options.Events = new JwtBearerEvents
                 {
+                    OnTokenValidated = context =>
+                    {
+                        var tokenId = context.Principal?
+                            .FindFirst(JwtRegisteredClaimNames.Jti)?
+                            .Value;
+
+                        var revocationService = context.HttpContext
+                            .RequestServices
+                            .GetRequiredService<ITokenRevocationService>();
+
+                        if (tokenId is not null &&
+                            revocationService.IsRevoked(tokenId))
+                        {
+                            context.Fail("El token fue revocado.");
+                        }
+
+                        return Task.CompletedTask;
+                    },
                     OnChallenge = async context =>
                     {
                         context.HandleResponse();
