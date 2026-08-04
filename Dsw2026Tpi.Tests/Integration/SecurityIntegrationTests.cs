@@ -64,7 +64,7 @@ public sealed class SecurityIntegrationTests
 
         using var response =
             await client.GetAsync(
-                $"/appointments?date={date}");
+                $"/api/appointments?date={date}");
 
         Assert.Equal(
             HttpStatusCode.Forbidden,
@@ -172,7 +172,7 @@ public sealed class SecurityIntegrationTests
         {
             using var response =
                 await client.PostAsJsonAsync(
-                    "/appointments",
+                    "/api/appointments",
                     new { });
 
             Assert.NotEqual(
@@ -182,7 +182,7 @@ public sealed class SecurityIntegrationTests
 
         using var rejectedResponse =
             await client.PostAsJsonAsync(
-                "/appointments",
+                "/api/appointments",
                 new { });
 
         await AssertRateLimitExceeded(rejectedResponse);

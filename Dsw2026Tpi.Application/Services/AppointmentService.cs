@@ -269,7 +269,7 @@ public class AppointmentService : IAppointmentService
         var availableTime = $"{availability.StartTime.ToString("HH:mm", CultureInfo.InvariantCulture)}-" +  $"{availability.EndTime.ToString("HH:mm", CultureInfo.InvariantCulture)}";
 
         return new AppointmentModel.Response(appointment.Id,availability.Id,
-            new AppointmentModel.SpecialityResponse(speciality.Id, speciality.Name),
+            new AppointmentModel.SpecialtyResponse(speciality.Id, speciality.Name),
             new AppointmentModel.DoctorResponse(doctor.Id, doctor.Name),
             patient.Dni,
             availability.Date,

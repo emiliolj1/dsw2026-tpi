@@ -12,11 +12,11 @@ namespace Dsw2026Tpi.Application.Dtos
 
         public record SearchRequest(Guid? SpecialityId, Guid? DoctorId, long? Dni, DateOnly? Date, int PageSize = 10, int PageIndex = 0);
 
-        public record Response(Guid Id, Guid AvailabilityId, SpecialityResponse Speciality, DoctorResponse Doctor, long Dni, DateOnly Date, string AvailableTime, string Reason, string Status);
+        public record Response(Guid Id, Guid AvailabilityId, SpecialtyResponse Specialty, DoctorResponse Doctor, long Dni, DateOnly Date, string AvailableTime, string Reason, string Status);
 
-        public record PagedResponse(IEnumerable<Response> Items, int TotalCount, int PageSize, int PageIndex);
+        public record PagedResponse(IEnumerable<Response> Data, int Total, int PageSize, int PageIndex);
 
-        public record SpecialityResponse(Guid Id, string Name);
+        public record SpecialtyResponse(Guid Id, string Name);
 
         public record DoctorResponse(Guid Id, string Name);
     }
