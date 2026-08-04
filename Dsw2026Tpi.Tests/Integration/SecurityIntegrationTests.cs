@@ -81,6 +81,140 @@ public sealed class SecurityIntegrationTests
         Assert.False(body.TryGetProperty("details", out _));
     }
 
+    [Theory]
+    [InlineData("/api/specialties?pageSize=10&pageIndex=0")]
+    [InlineData("/api/doctors?pageSize=10&pageIndex=0")]
+    public async Task PatientToken_OnCatalogEndpoint_ReturnsOk(
+        string endpoint)
+    {
+        using var factory =
+            new CustomWebApplicationFactory();
+
+        using var client = factory.CreateClient();
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue(
+                "Bearer",
+                CreatePatientToken(Guid.NewGuid()));
+
+        using var response =
+            await client.GetAsync(endpoint);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("/api/specialties?pageSize=10&pageIndex=0")]
+    [InlineData("/api/doctors?pageSize=10&pageIndex=0")]
+    public async Task AdminToken_OnCatalogEndpoint_ReturnsOk(
+        string endpoint)
+    {
+        using var factory =
+            new CustomWebApplicationFactory();
+
+        using var client = factory.CreateClient();
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue(
+                "Bearer",
+                CreateAdminToken(Guid.NewGuid()));
+
+        using var response =
+            await client.GetAsync(endpoint);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("/api/specialties?pageSize=10&pageIndex=0")]
+    [InlineData("/api/doctors?pageSize=10&pageIndex=0")]
+    public async Task CatalogEndpoint_WithoutToken_ReturnsUniform401(
+        string endpoint)
+    {
+        using var factory =
+            new CustomWebApplicationFactory();
+
+        using var client = factory.CreateClient();
+
+        using var response =
+            await client.GetAsync(endpoint);
+
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            response.StatusCode);
+
+        var body =
+            await response.Content
+                .ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(
+            "AUTHENTICATION_FAILED",
+            body.GetProperty("errorCode").GetString());
+
+        Assert.True(body.TryGetProperty("message", out _));
+        Assert.False(body.TryGetProperty("details", out _));
+    }
+
+    [Theory]
+    [InlineData("POST", "/api/specialties")]
+    [InlineData(
+        "PUT",
+        "/api/specialties/00000000-0000-0000-0000-000000000000")]
+    [InlineData(
+        "DELETE",
+        "/api/specialties/00000000-0000-0000-0000-000000000000")]
+    [InlineData("POST", "/api/doctors")]
+    [InlineData(
+        "PUT",
+        "/api/doctors/00000000-0000-0000-0000-000000000000")]
+    [InlineData(
+        "DELETE",
+        "/api/doctors/00000000-0000-0000-0000-000000000000")]
+    [InlineData(
+        "GET",
+        "/api/doctors/00000000-0000-0000-0000-000000000000/availabilities")]
+    public async Task PatientToken_OnAdministrativeEndpoint_ReturnsUniform403(
+        string method,
+        string endpoint)
+    {
+        using var factory =
+            new CustomWebApplicationFactory();
+
+        using var client = factory.CreateClient();
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue(
+                "Bearer",
+                CreatePatientToken(Guid.NewGuid()));
+
+        using var request =
+            new HttpRequestMessage(
+                new HttpMethod(method),
+                endpoint);
+
+        using var response =
+            await client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+
+        var body =
+            await response.Content
+                .ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(
+            "AUTHORIZATION_FAILED",
+            body.GetProperty("errorCode").GetString());
+
+        Assert.True(body.TryGetProperty("message", out _));
+        Assert.False(body.TryGetProperty("details", out _));
+    }
+
     [Fact]
     public async Task AdminLogin_SixthAttempt_ReturnsUniform429()
     {
@@ -215,15 +349,32 @@ public sealed class SecurityIntegrationTests
     private static string CreatePatientToken(
         Guid patientUserId)
     {
+        return CreateToken(
+            patientUserId,
+            Roles.Patient);
+    }
+
+    private static string CreateAdminToken(
+        Guid adminUserId)
+    {
+        return CreateToken(
+            adminUserId,
+            Roles.Administrator);
+    }
+
+    private static string CreateToken(
+        Guid userId,
+        string role)
+    {
         var claims = new[]
         {
             new Claim(
                 ClaimTypes.NameIdentifier,
-                patientUserId.ToString()),
+                userId.ToString()),
 
             new Claim(
                 ClaimTypes.Role,
-                Roles.Patient)
+                role)
         };
 
         var key = new SymmetricSecurityKey(
