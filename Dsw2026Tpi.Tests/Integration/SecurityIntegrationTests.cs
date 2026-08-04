@@ -215,6 +215,55 @@ public sealed class SecurityIntegrationTests
         Assert.False(body.TryGetProperty("details", out _));
     }
 
+    [Theory]
+    [InlineData("email-invalido", "Password123")]
+    [InlineData("admin-test@example.com", "corta")]
+    [InlineData("admin-test@example.com", "")]
+    public async Task AdminLogin_WithInvalidFormat_Returns400(
+    string email,
+    string password)
+    {
+        using var factory =
+            new CustomWebApplicationFactory();
+
+        using var client = factory.CreateClient();
+
+        using var response =
+            await client.PostAsJsonAsync(
+                "/api/auth/admin/login",
+                new
+                {
+                    Email = email,
+                    Password = password
+                });
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdminLogin_WithIncorrectCredentials_Returns401()
+    {
+        using var factory =
+            new CustomWebApplicationFactory();
+
+        using var client = factory.CreateClient();
+
+        using var response =
+            await client.PostAsJsonAsync(
+                "/api/auth/admin/login",
+                new
+                {
+                    Email = "admin-inexistente@example.com",
+                    Password = "Password123"
+                });
+
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            response.StatusCode);
+    }
+
     [Fact]
     public async Task AdminLogin_SixthAttempt_ReturnsUniform429()
     {

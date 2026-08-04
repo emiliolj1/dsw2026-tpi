@@ -42,9 +42,10 @@ public class AuthenticationService : IAuthenticationService
     LoginAdminModel.Request request)
     {
         if (!request.Email.IsEmailValid() ||
-            string.IsNullOrWhiteSpace(request.Password))
+     string.IsNullOrWhiteSpace(request.Password) ||
+     request.Password.Length < 8)
         {
-            throw new AuthenticationException();
+            throw new ValidationException();
         }
 
         var user = await _userManager.FindByEmailAsync(request.Email);
