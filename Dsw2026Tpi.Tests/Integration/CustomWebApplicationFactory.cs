@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection; 
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace Dsw2026Tpi.Tests.Integration;
 
@@ -79,7 +80,11 @@ public sealed class CustomWebApplicationFactory
 
         services.AddDbContext<TContext>(options =>
         {
-            options.UseInMemoryDatabase(databaseName);
+            options
+                .UseInMemoryDatabase(databaseName)
+                .ConfigureWarnings(warnings =>
+                    warnings.Ignore(
+                        InMemoryEventId.TransactionIgnoredWarning));
         });
     }
 
