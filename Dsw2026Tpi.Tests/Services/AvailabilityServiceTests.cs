@@ -87,4 +87,4 @@ public class AvailabilityServiceTests
         _persistence.VerifyNoOtherCalls();
         _availabilityPersistence.VerifyNoOtherCalls();
     }
-}
+}   
