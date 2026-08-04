@@ -2,7 +2,10 @@
 using Dsw2026Tpi.Data.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
+using Dsw2026Tpi.CrossCutting.Models;
+using Dsw2026Tpi.CrossCutting.Resources;
 using System.Text;
 
 namespace Dsw2026Tpi.Api.Configurations;
@@ -38,12 +41,50 @@ public static class SecurityConfigurationExtensions
                     ValidAudience = audience,
                     IssuerSigningKey = new SymmetricSecurityKey(key)
                 };
+                options.Events = new JwtBearerEvents
+                {
+                    OnChallenge = async context =>
+                    {
+                        context.HandleResponse();
+
+                        context.Response.StatusCode =
+                            StatusCodes.Status401Unauthorized;
+
+                        var error = new ErrorResponse(
+                            nameof(ErrorCodes.AUTHENTICATION_FAILED),
+                            ErrorCodes.AUTHENTICATION_FAILED);
+
+                        await context.Response.WriteAsJsonAsync(
+                            error,
+                            context.HttpContext.RequestAborted);
+                    },
+
+                    OnForbidden = async context =>
+                    {
+                        context.Response.StatusCode =
+                            StatusCodes.Status403Forbidden;
+
+                        var error = new ErrorResponse(
+                            nameof(ErrorCodes.AUTHORIZATION_FAILED),
+                            ErrorCodes.AUTHORIZATION_FAILED);
+
+                        await context.Response.WriteAsJsonAsync(
+                            error,
+                            context.HttpContext.RequestAborted);
+                    }
+                };
             });
         services.AddAuthorizationBuilder()
-            .AddPolicy(Policies.AdminPolicy, policy =>
-                policy.RequireRole(Roles.Administrator))
-            .AddPolicy(Policies.PatientPolicy, policy =>
-                policy.RequireRole(Roles.Patient));
+            .SetFallbackPolicy(
+                new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .Build())
+            .AddPolicy(
+                Policies.AdminPolicy,
+                policy => policy.RequireRole(Roles.Administrator))
+            .AddPolicy(
+                Policies.PatientPolicy,
+                policy => policy.RequireRole(Roles.Patient));
         return services;
     }
 

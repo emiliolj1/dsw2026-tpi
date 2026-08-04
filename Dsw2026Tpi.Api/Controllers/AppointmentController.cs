@@ -2,6 +2,7 @@
 using Dsw2026Tpi.Application.Interfaces;
 using Dsw2026Tpi.CrossCutting.Identity;
 using Dsw2026Tpi.CrossCutting.Exceptions;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -19,6 +20,7 @@ public class AppointmentController : AppController
     }
 
     [HttpPost]
+    [EnableRateLimiting(RateLimitPolicies.AppointmentBooking)]
     [Authorize(Policy = Policies.PatientPolicy)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -29,8 +31,8 @@ public class AppointmentController : AppController
     public async Task<IActionResult> Create([FromBody] AppointmentModel.Request request)
     {
         await _service.Create(
-    request,
-    GetAuthenticatedPatientUserId());
+            request,
+            GetAuthenticatedPatientUserId());
 
         return StatusCode(StatusCodes.Status201Created);
     }

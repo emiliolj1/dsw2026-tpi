@@ -1,5 +1,8 @@
 using Dsw2026Tpi.Api.Configurations;
 using Dsw2026Tpi.Api.Middlewares;
+using Dsw2026Tpi.CrossCutting.Models;
+using Dsw2026Tpi.CrossCutting.Resources;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Serilog;
@@ -26,11 +29,36 @@ public class Program
             builder.AddSerilogConfiguration();
             builder.Services.AddAppIdentity();
             builder.Services.AddAppAuthentication(builder.Configuration);
+            builder.Services.AddAppRateLimiting(builder.Configuration);
             builder.Services.AddSwaggerConfiguration();
             builder.Services.AddApplicationPersistence(builder.Configuration);
             builder.Services.AddAppCors(builder.Configuration);
             builder.Services.AddAppDependencies(builder.Configuration);
-            builder.Services.AddControllers();
+            builder.Services
+                .AddControllers()
+                .ConfigureApiBehaviorOptions(options =>
+                {
+                    options.InvalidModelStateResponseFactory = context =>
+                    {
+                        var error = new ErrorResponse(
+                            nameof(ErrorCodes.VALIDATION_ERROR),
+                            ErrorCodes.VALIDATION_ERROR);
+
+                        foreach (var entry in context.ModelState)
+                        {
+                            foreach (var modelError in entry.Value.Errors)
+                            {
+                                var issue = string.IsNullOrWhiteSpace(modelError.ErrorMessage)
+                                    ? "El valor ingresado no es válido."
+                                    : modelError.ErrorMessage;
+
+                                error.AddDetail(entry.Key, issue);
+                            }
+                        }
+
+                        return new BadRequestObjectResult(error);
+                    };
+                });
             builder.Services.AddHealthChecks();
 
             var app = builder.Build();
@@ -55,13 +83,16 @@ public class Program
                 app.UseSwaggerUI();
             }
 
-            app.UseAuthentication();
-            app.UseAuthorization();
-            app.UseCors();
             app.UseMiddleware<ExceptionHandlingMiddleware>();
+            app.UseCors();
+            app.UseAuthentication();
+            app.UseRateLimiter();
+            app.UseAuthorization();
 
             app.MapControllers();
-            app.MapHealthChecks("/health-check");
+
+            app.MapHealthChecks("/health-check")
+                .RequireAuthorization();
 
             Log.Information("Aplicación iniciada correctamente");
 
