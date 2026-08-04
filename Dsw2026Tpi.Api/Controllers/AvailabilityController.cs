@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Dsw2026Tpi.Api.Controllers;
 
-[Route("availabilities")]
+[Route("api/availabilities")]
 public class AvailabilityController : AppController
 {
     private readonly IAvailabilityService _service;

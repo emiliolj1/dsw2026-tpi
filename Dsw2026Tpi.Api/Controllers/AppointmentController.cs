@@ -9,7 +9,7 @@ using System.Security.Claims;
 
 namespace Dsw2026Tpi.Api.Controllers;
 
-[Route("appointments")]
+[Route("api/appointments")]
 public class AppointmentController : AppController
 {
     private readonly IAppointmentService _service;
@@ -88,14 +88,14 @@ public class AppointmentController : AppController
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Search(
-        [FromQuery] Guid? specialityId,
+        [FromQuery] Guid? specialtyId,
         [FromQuery] Guid? doctorId,
         [FromQuery] long? dni,
         [FromQuery] DateOnly? date,
         [FromQuery] int pageSize = 10,
         [FromQuery] int pageIndex = 0)
     {
-        var request = new AppointmentModel.SearchRequest(specialityId, doctorId, dni, date, pageSize, pageIndex);
+        var request = new AppointmentModel.SearchRequest(specialtyId, doctorId, dni, date, pageSize, pageIndex);
 
         var appointments = await _service.Search(request);
 
