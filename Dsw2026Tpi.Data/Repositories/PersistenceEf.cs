@@ -2,6 +2,7 @@
 using Dsw2026Tpi.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
+using ValidationException = Dsw2026Tpi.CrossCutting.Exceptions.ValidationException;
 
 namespace Dsw2026Tpi.Data.Repositories;
 
@@ -63,22 +64,47 @@ public class PersistenceEf: IPersistence
     }
 
     public async Task<Pagination<T>> Paginate<T, TKey>(
-       int pageSize,
-       int pageIndex,
-       Expression<Func<T, bool>> predicate,
-       Expression<Func<T, TKey>> sortOrder,
-       params string[] includes)
-       where T : EntityBase
+        int pageSize,
+        int pageIndex,
+        Expression<Func<T, bool>> predicate,
+        Expression<Func<T, TKey>> sortOrder,
+        params string[] includes)
+        where T : EntityBase
     {
+        if (pageSize is < 1 or > 100)
+        {
+            throw new ValidationException().WithDetail(
+                "pageSize",
+                "Debe estar entre 1 y 100.");
+        }
+
+        if (pageIndex < 0)
+        {
+            throw new ValidationException().WithDetail(
+                "pageIndex",
+                "Debe ser mayor o igual a cero.");
+        }
+
+        // Convertir antes de multiplicar evita el desbordamiento de int.
+        var offset = (long)pageIndex * pageSize;
+
+        if (offset > int.MaxValue)
+        {
+            throw new ValidationException().WithDetail(
+                "pageIndex",
+                "El desplazamiento solicitado supera el máximo permitido.");
+        }
+
         var filtered = Include(_context.Set<T>(), includes)
             .Where(entity => !entity.Deleted)
-            .Where(predicate)
-            .OrderBy(sortOrder);
+            .Where(predicate);
 
         var total = await filtered.CountAsync();
 
         var data = await filtered
-            .Skip(pageIndex * pageSize)
+            .OrderBy(sortOrder)
+            .ThenBy(entity => entity.Id)
+            .Skip((int)offset)
             .Take(pageSize)
             .ToListAsync();
 
