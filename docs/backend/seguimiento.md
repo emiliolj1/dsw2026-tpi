@@ -38,8 +38,8 @@ El símbolo "-" indica información todavía no disponible.
 
 | Tarea | Responsable | Dependencias | Estado | Rama | PR | SHA integrado | Evidencia |
 |---|---|---|---|---|---|---|---|
-| G01 | Emilio | Ninguna | Documentación preparada; revisión pendiente | docs/emilio-contratos-cierre | - | - | Base inicial verificada; entrega conjunta con G02 |
-| G02 | Emilio | G01, incluido en el mismo PR | Implementado localmente; revisión pendiente | docs/emilio-contratos-cierre | - | - | 72 pruebas aprobadas; validación SQL pendiente de C01 |
+| G01 | Emilio | Ninguna | PR abierto; revisión pendiente | docs/emilio-contratos-cierre | #21 | - | Base inicial verificada; entrega conjunta con G02 |
+| G02 | Emilio | G01, incluido en el mismo PR | PR abierto; revisión pendiente | docs/emilio-contratos-cierre | #21 | - | 72 pruebas aprobadas; validación SQL pendiente de C01 |pruebas aprobadas; validación SQL pendiente de C01 |
 | C01 | Charly | G02 | Pendiente | - | - | - | - |
 | C02 | Charly | G02 | Pendiente | - | - | - | - |
 | N01 | Nacho | G02 | Pendiente | - | - | - | - |
