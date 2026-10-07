@@ -6,10 +6,10 @@ API REST desarrollada con ASP.NET Core para administrar especialidades, médicos
 
 ## Integrantes
 
-- Fernández, Fausto Fidel
-- López, Carlos Facundo
+- Ferreyra, Lucas Tomas
+- Ferreyra, Matias Ignacio
+- Lopez, Carlos Facundo
 - Luna Jandar, Emilio
-- Ríos Volentini, Federico
 
 ## Funcionalidades principales
 
