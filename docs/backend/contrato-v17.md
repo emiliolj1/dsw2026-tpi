@@ -523,29 +523,176 @@ Los rechazos devuelven 429 con el formato común y se registran en logs.
 
 ## 15. Base técnica compartida
 
-Interfaces objetivo de G02:
+G02 incorpora las siguientes interfaces y sus implementaciones.
+Su disponibilidad para el equipo depende de integrar el PR conjunto
+G01 + G02 en development.
 
-- IClinicClock.GetCurrentLocalDateTime(): DateTimeOffset.
-- IClinicalWriteScopeFactory.BeginAsync(CancellationToken).
-- El alcance devuelto implementa IAsyncDisposable y
-  CompleteAsync(CancellationToken).
+### Reloj del centro
 
-Reglas:
-- Tomar un único instante del reloj por operación.
-- Iniciar el alcance antes de las lecturas que deciden la escritura.
-- Usar el mismo DbContext scoped de los repositorios.
-- Dispose sin Complete revierte la transacción.
-- No abrir transacciones anidadas dentro del alcance.
-- Todas las mutaciones de catálogos, planificación, slots y citas
-  comparten la clave tpi:clinical-write.
-- Obtener el bloqueo exclusivo en SQL Server dentro de la transacción,
-  con recurso y timeout parametrizados y retorno comprobado.
-- Conservar rowversion e índices únicos como defensas adicionales.
-- Releer el estado después de adquirir el bloqueo.
-- Los mocks no acreditan exclusión mutua ni rollback en SQL Server.
+Ubicación: Dsw2026Tpi.Application/Interfaces/IClinicClock.cs.
 
-G02 agregará las firmas completas y ejemplos de uso.
-C01 proporcionará la infraestructura SQL para comprobar estas garantías.
+```csharp
+public interface IClinicClock
+{
+    DateTimeOffset GetCurrentLocalDateTime();
+}
+```
+
+Implementación: ClinicClock, registrada como Singleton.
+Fuente de tiempo: TimeProvider, reemplazable en pruebas.
+
+Configuración:
+
+```json
+{
+  "Clinic": {
+    "TimeZoneId": "America/Argentina/Buenos_Aires"
+  }
+}
+```
+
+La resolución admite el identificador equivalente Argentina Standard Time.
+Una configuración inválida impide el inicio de la API.
+
+Cada operación toma un único instante y deriva de él la fecha y hora:
+
+```csharp
+var now = _clinicClock.GetCurrentLocalDateTime();
+var today = DateOnly.FromDateTime(now.DateTime);
+var currentTime = TimeOnly.FromDateTime(now.DateTime);
+```
+
+No usar now.LocalDateTime: convertiría el resultado a la zona del host.
+
+Las pruebas del reloj verificaron cambios de día, mes y año,
+los dos identificadores de zona y zonas locales simuladas.
+La ejecución reportada corresponde al entorno Windows de Emilio.
+
+### Alcance de escritura
+
+Ubicación: Dsw2026Tpi.Domain/Interfaces.
+
+```csharp
+public interface IClinicalWriteScopeFactory
+{
+    Task<IClinicalWriteScope> BeginAsync(
+        CancellationToken cancellationToken = default);
+}
+
+public interface IClinicalWriteScope : IAsyncDisposable
+{
+    Task CompleteAsync(
+        CancellationToken cancellationToken = default);
+}
+```
+
+Implementación: ClinicalWriteScopeFactory, registrada como Scoped.
+Utiliza el mismo Dsw2026TpiDbContext scoped que los repositorios.
+
+Configuración:
+
+```json
+{
+  "ClinicalWrite": {
+    "LockTimeoutMilliseconds": 5000
+  }
+}
+```
+
+El rango admitido es de 0 a 60000 milisegundos.
+Cero solicita adquisición inmediata, sin esperar si está ocupado.
+Este timeout limita la espera del bloqueo, no toda la transacción.
+
+La fábrica:
+- Exige SQL Server.
+- Rechaza alcances o transacciones anidados.
+- Rechaza cambios pendientes en el ChangeTracker al comenzar.
+- Abre una transacción ReadCommitted.
+- Adquiere sp_getapplock en modo Exclusive, propietario Transaction,
+  principal public y recurso tpi:clinical-write.
+- Parametriza el recurso y el timeout.
+- Comprueba el código de retorno.
+- Limpia el seguimiento previo después de adquirir el bloqueo para
+  evitar que nuevas consultas reutilicen entidades rastreadas antes.
+- CompleteAsync guarda cambios pendientes y confirma.
+- DisposeAsync sin completar revierte y limpia el seguimiento.
+- CompleteAsync solo admite un intento por alcance.
+
+Los retornos de timeout y deadlock del bloqueo generan
+ClinicalWriteConflictException, código CLINICAL_WRITE_CONFLICT,
+que el middleware existente traduce a HTTP 409.
+
+Los errores de conexión, parámetros o implementación no se convierten
+indiscriminadamente en conflictos.
+
+### Patrón de uso para los módulos
+
+Ejemplo ilustrativo dentro de un servicio con dependencias inyectadas:
+
+```csharp
+await using var scope =
+    await _writeScopeFactory.BeginAsync(cancellationToken);
+
+var now = _clinicClock.GetCurrentLocalDateTime();
+
+// Consultar nuevamente el estado dentro del alcance.
+// Validar usando ese estado y el instante capturado.
+// Realizar las escrituras mediante los repositorios.
+
+await scope.CompleteAsync(cancellationToken);
+```
+
+Reglas de integración:
+- Comenzar el alcance antes de las lecturas decisorias y modificaciones.
+- No reutilizar objetos obtenidos antes del bloqueo para decidir cambios.
+- Capturar el instante operativo después de adquirir el bloqueo.
+- Una salida sin CompleteAsync provoca rollback.
+- No continuar ni intentar confirmar después de un error de escritura.
+- No abrir otra transacción dentro de los repositorios participantes.
+- No ejecutar operaciones en paralelo sobre el mismo DbContext.
+- DisposeAsync debe ejecutarse también después de CompleteAsync.
+
+Los repositorios pueden llamar a SaveChangesAsync dentro del alcance;
+la confirmación definitiva pertenece al alcance.
+
+En la base actual, AppointmentPersistenceEf y
+AvailabilityPersistenceEf todavía abren transacciones propias.
+Lucas y Nacho deben adaptar esas operaciones al integrar sus módulos.
+
+El registro de la fábrica no protege automáticamente las operaciones:
+todas las mutaciones de catálogos, reglas, slots y citas deben consumir
+el alcance compartido en sus tareas correspondientes.
+
+Se conservan rowversion e índices únicos como defensas adicionales.
+
+### Paginación compartida
+
+PersistenceEf.Paginate conserva su firma pública.
+
+- Valida pageSize entre 1 y 100 y pageIndex no negativo.
+- Calcula el desplazamiento con long antes de convertirlo a int.
+- Rechaza desplazamientos mayores que int.MaxValue.
+- Ordena por sortOrder y luego por Id.
+- Conserva filtros y exclusión de eliminados.
+- Calcula total antes de paginar.
+- Una página válida sin resultados devuelve data vacío.
+
+Las consultas específicas de citas deben respetar el orden por fecha,
+hora de inicio e Id definido en este contrato. El método genérico
+no agrega por sí mismo campos de fecha u hora.
+
+### Evidencia y límites de validación
+
+Verificación local reportada por Emilio:
+- Suite completa: 72 aprobadas, 0 fallidas, 0 omitidas.
+- ClinicClockTests: 10 aprobadas.
+- PersistenceEfTests: 10 aprobadas, incluidas las 2 preexistentes.
+
+Las pruebas de persistencia actuales utilizan InMemory.
+
+La exclusión mutua, el timeout, la liberación del bloqueo y el rollback
+en SQL Server real quedan pendientes de la infraestructura de C01.
+La compilación y los mocks no acreditan esas garantías.
 
 ## 16. Adaptaciones y límites del alcance
 

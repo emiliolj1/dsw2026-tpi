@@ -34,7 +34,14 @@ No actualizar paquetes ni herramientas como parte del PR documental G01.
 
 Los cambios se realizan en ramas por tarea, con PR hacia development.
 
-G01 debe integrarse antes de G02.
+Por decisión de Emilio del 2026-10-07, G01 y G02 se desarrollan
+en la rama docs/emilio-contratos-cierre y se entregan en un único PR
+hacia development.
+
+Esta decisión reemplaza la integración separada originalmente prevista.
+Los demás integrantes comienzan las tareas dependientes cuando el PR
+conjunto esté integrado.
+
 G02 proporciona la base compartida que necesitan los demás integrantes.
 
 Una dependencia solo se considera disponible cuando está integrada
@@ -86,7 +93,7 @@ del centro en Argentina, independientemente de la zona del equipo.
 
 La auditoría técnica se registra en UTC.
 
-G02 implementará un reloj inyectable y configurable.
+G02 incorpora un reloj inyectable y configurable.
 Cada operación tomará un único instante para sus comparaciones.
 
 Identificadores previstos para resolver la zona:
@@ -142,13 +149,13 @@ E02 coordina la configuración y N02 verifica su aplicación a la agenda.
 
 ## D09 — Escrituras clínicas y concurrencia
 
-G02 implementará un alcance transaccional compartido sobre el mismo
+G02 incorpora un alcance transaccional compartido sobre el mismo
 DbContext scoped utilizado por los repositorios.
 
 Las mutaciones de catálogos, reglas, slots y citas adquirirán
 la misma clave de bloqueo: tpi:clinical-write.
 
-La propuesta utiliza sp_getapplock en SQL Server:
+La implementación utiliza sp_getapplock en SQL Server; su validación SQL está pendiente de C01:
 - Modo Exclusive.
 - Propietario Transaction.
 - Recurso y timeout parametrizados.

@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Dsw2026Tpi.Domain\Dsw2026Tpi.Domain.csproj" />
+    <ProjectReference Include="..\Dsw2026Tpi.CrossCutting\Dsw2026Tpi.CrossCutting.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -38,8 +38,8 @@ El símbolo "-" indica información todavía no disponible.
 
 | Tarea | Responsable | Dependencias | Estado | Rama | PR | SHA integrado | Evidencia |
 |---|---|---|---|---|---|---|---|
-| G01 | Emilio | Ninguna | En curso | docs/emilio-contratos-cierre | - | - | Verificación inicial registrada |
-| G02 | Emilio | G01 | Pendiente | feature/emilio-base-compartida | - | - | - |
+| G01 | Emilio | Ninguna | Documentación preparada; revisión pendiente | docs/emilio-contratos-cierre | - | - | Base inicial verificada; entrega conjunta con G02 |
+| G02 | Emilio | G01, incluido en el mismo PR | Implementado localmente; revisión pendiente | docs/emilio-contratos-cierre | - | - | 72 pruebas aprobadas; validación SQL pendiente de C01 |
 | C01 | Charly | G02 | Pendiente | - | - | - | - |
 | C02 | Charly | G02 | Pendiente | - | - | - | - |
 | N01 | Nacho | G02 | Pendiente | - | - | - | - |
@@ -57,12 +57,30 @@ El símbolo "-" indica información todavía no disponible.
 | C05 | Charly | C04, N04 | Pendiente | - | - | - | - |
 | E03 | Emilio | N04, L04, C05, E01, E02 | Pendiente | docs/emilio-cierre-backend | - | - | - |
 
-## Estado documental de G01
+## Entrega conjunta G01 + G02
 
-- contrato-v17.md: redactado localmente.
-- decisiones.md: redactado localmente.
-- seguimiento.md: evidencia inicial y versiones registradas.
-- Entorno y estrategia de base de pruebas: documentados.
-- Revisión del contrato por los integrantes: pendiente.
-- PR hacia development: pendiente.
-- Integración de G01: pendiente.
+Por decisión de Emilio del 2026-10-07, ambas tareas se entregan
+en un único PR desde docs/emilio-contratos-cierre hacia development.
+
+G02 incorpora:
+- Reloj configurable con TimeProvider y validación al iniciar.
+- Interfaces y fábrica del alcance transaccional SQL.
+- Configuración y registro Scoped de la fábrica.
+- Excepción transversal de conflicto de escritura.
+- Paginación con desempate por Id y validación de desbordamientos.
+
+Evidencia local reportada después de los cambios:
+- Compilación correcta.
+- Suite completa: 72 aprobadas, 0 fallidas, 0 omitidas.
+- ClinicClockTests: 10 aprobadas.
+- PersistenceEfTests: 10 aprobadas.
+- git diff --check: sin problemas reportados.
+
+Pendientes:
+- Revisión del PR conjunto y de las interfaces por el equipo.
+- Integración en development y registro del PR/SHA.
+- Pruebas reales de bloqueo, timeout y rollback mediante C01.
+- Adopción del reloj y alcance por los módulos en sus tareas asignadas.
+
+La publicación de la fábrica no implica que las operaciones existentes
+ya estén protegidas por el bloqueo compartido.
