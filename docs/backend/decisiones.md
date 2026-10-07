@@ -257,7 +257,6 @@ decorativos del mockup.
 
 | Punto | Responsable | Momento |
 |---|---|---|
-| Registrar versiones locales de EF Core y dotnet-ef | Emilio | G01 |
 | Revisar contratos e interfaces con el equipo | Emilio coordina | Antes de integrar G01 |
 | Verificar resolución de zona horaria y opciones del alcance | Emilio | G02 |
 | Documentar instancia y configuración segura de pruebas SQL | Charly | C01 |
