@@ -44,6 +44,7 @@ public class DoctorController : AppController
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create(
         [FromBody] DoctorModel.Request request)
     {
@@ -59,6 +60,8 @@ public class DoctorController : AppController
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+
     public async Task<IActionResult> Update(
         [FromRoute] Guid id,
         [FromBody] DoctorModel.Request request)
@@ -75,6 +78,7 @@ public class DoctorController : AppController
     StatusCodes.Status200OK,
     "text/plain")]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Delete([FromRoute] Guid id)
     {
         await _service.Delete(id);

@@ -5,18 +5,49 @@ using Dsw2026Tpi.Domain.Interfaces;
 using Dsw2026Tpi.CrossCutting.Exceptions;
 using System.Linq.Expressions;
 using Moq;
+using Dsw2026Tpi.Application.Interfaces;
 
 namespace Dsw2026Tpi.Tests.Services;
 
 public class DoctorServiceTests
 {
     private readonly Mock<IPersistence> _persistence;
+    private readonly Mock<IClinicalWriteScopeFactory> _writeScopeFactory;
+    private readonly Mock<IClinicalWriteScope> _writeScope;
+    private readonly Mock<IClinicClock> _clock;
     private readonly DoctorService _service;
 
     public DoctorServiceTests()
     {
         _persistence = new Mock<IPersistence>();
-        _service = new DoctorService(_persistence.Object);
+        _writeScopeFactory = new Mock<IClinicalWriteScopeFactory>();
+        _writeScope = new Mock<IClinicalWriteScope>();
+        _clock = new Mock<IClinicClock>();
+
+        _writeScopeFactory
+            .Setup(factory => factory.BeginAsync(
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(_writeScope.Object);
+
+        _writeScope
+            .Setup(scope => scope.CompleteAsync(
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _writeScope
+            .Setup(scope => scope.DisposeAsync())
+            .Returns(ValueTask.CompletedTask);
+
+        _clock
+            .Setup(clock => clock.GetCurrentLocalDateTime())
+            .Returns(new DateTimeOffset(
+                2026, 10, 20, 10, 0, 0,
+                TimeSpan.FromHours(-3)));
+
+        _service = new DoctorService(
+            _persistence.Object,
+            _writeScopeFactory.Object,
+            _clock.Object);
     }
 
     [Fact]
@@ -457,5 +488,142 @@ public class DoctorServiceTests
         Assert.DoesNotContain(
             unfiltered.Data,
             doctor => doctor.Id == relatedToDeleted.Id);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Mutation_WithFutureBooking_RejectsWithoutChangingDoctor(
+    bool changeSpecialty)
+    {
+        var speciality = new Speciality(
+            "Cardiología",
+            "Especialidad original del médico");
+
+        var doctor = new Doctor(
+            "Ana Pérez",
+            "MP-ORIGINAL",
+            speciality);
+
+        var booking = new Appointment(
+            doctor.Id,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Consulta de control");
+
+        _persistence
+            .Setup(p => p.GetById<Doctor>(
+                doctor.Id,
+                It.IsAny<string[]>()))
+            .Callback(() =>
+            {
+                _writeScopeFactory.Verify(
+                    factory => factory.BeginAsync(
+                        It.IsAny<CancellationToken>()),
+                    Times.Once);
+            })
+            .ReturnsAsync(doctor);
+
+        // Simula que la consulta encuentra una reserva que impide operar.
+        // La selección por fecha/hora se verificará con SQL real.
+        _persistence
+            .Setup(p => p.First<Appointment>(
+                It.IsAny<Expression<Func<Appointment, bool>>>(),
+                It.IsAny<string[]>()))
+            .ReturnsAsync(booking);
+
+        if (changeSpecialty)
+        {
+            var request = new DoctorModel.Request(
+                "Nombre modificado",
+                "MP-MODIFICADA",
+                Guid.NewGuid());
+
+            await Assert.ThrowsAsync<ConflictException>(
+                () => _service.Update(doctor.Id, request));
+        }
+        else
+        {
+            await Assert.ThrowsAsync<ConflictException>(
+                () => _service.Delete(doctor.Id));
+        }
+
+        Assert.True(doctor.IsActive);
+        Assert.False(doctor.Deleted);
+        Assert.Equal("Ana Pérez", doctor.Name);
+        Assert.Equal("MP-ORIGINAL", doctor.LicenseNumber);
+        Assert.Equal(speciality.Id, doctor.SpecialityId);
+
+        _persistence.Verify(
+            p => p.Update(It.IsAny<Doctor>()),
+            Times.Never);
+
+        _persistence.Verify(
+            p => p.Delete(It.IsAny<Doctor>()),
+            Times.Never);
+
+        _clock.Verify(
+            clock => clock.GetCurrentLocalDateTime(),
+            Times.Once);
+
+        _writeScope.Verify(
+            scope => scope.CompleteAsync(
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+
+        _writeScope.Verify(
+            scope => scope.DisposeAsync(),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Update_WithSameSpecialty_DoesNotCheckFutureBookings()
+    {
+        var speciality = new Speciality(
+            "Cardiología",
+            "Especialidad actual del médico");
+
+        var doctor = new Doctor(
+            "Ana Pérez",
+            "MP-ORIGINAL",
+            speciality);
+
+        _persistence
+            .Setup(p => p.GetById<Doctor>(
+                doctor.Id,
+                It.IsAny<string[]>()))
+            .ReturnsAsync(doctor);
+
+        _persistence
+            .Setup(p => p.GetById<Speciality>(
+                speciality.Id,
+                It.IsAny<string[]>()))
+            .ReturnsAsync(speciality);
+
+        _persistence
+            .Setup(p => p.Update(doctor))
+            .ReturnsAsync(doctor);
+
+        var result = await _service.Update(
+            doctor.Id,
+            new DoctorModel.Request(
+                "Ana Pérez Actualizada",
+                "MP-ACTUALIZADA",
+                speciality.Id));
+
+        Assert.Equal("Ana Pérez Actualizada", result.Name);
+        Assert.Equal("MP-ACTUALIZADA", result.LicenseNumber);
+        Assert.Equal(speciality.Id, result.Specialty?.Id);
+
+        _persistence.Verify(
+            p => p.First<Appointment>(
+                It.IsAny<Expression<Func<Appointment, bool>>>(),
+                It.IsAny<string[]>()),
+            Times.Never);
+
+        _writeScope.Verify(
+            scope => scope.CompleteAsync(
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 }

@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection; 
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Dsw2026Tpi.Domain.Interfaces;
 
 namespace Dsw2026Tpi.Tests.Integration;
 
@@ -57,6 +58,12 @@ public sealed class CustomWebApplicationFactory
                 services,
                 "Authentication");
 
+            services.RemoveAll<IClinicalWriteScopeFactory>();
+
+            services.AddScoped<
+                IClinicalWriteScopeFactory,
+                StubClinicalWriteScopeFactory>();
+
             services.RemoveAll<IInitialAdminSeeder>();
 
             services.AddSingleton<IInitialAdminSeeder>(
@@ -88,6 +95,37 @@ public sealed class CustomWebApplicationFactory
         });
     }
 
+
+    // Sustituto para pruebas de contratos HTTP con InMemory.
+    // Las transacciones y los bloqueos se verifican en las pruebas SQL.
+    private sealed class StubClinicalWriteScopeFactory
+        : IClinicalWriteScopeFactory
+    {
+        public Task<IClinicalWriteScope> BeginAsync(
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            return Task.FromResult<IClinicalWriteScope>(
+                new StubClinicalWriteScope());
+        }
+
+        private sealed class StubClinicalWriteScope : IClinicalWriteScope
+        {
+            public Task CompleteAsync(
+                CancellationToken cancellationToken = default)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                return Task.CompletedTask;
+            }
+
+            public ValueTask DisposeAsync()
+            {
+                return ValueTask.CompletedTask;
+            }
+        }
+    }
     private sealed class NoOpInitialAdminSeeder
         : IInitialAdminSeeder
     {
