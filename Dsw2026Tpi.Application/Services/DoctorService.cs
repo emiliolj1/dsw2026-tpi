@@ -10,10 +10,17 @@ public class DoctorService : IDoctorService
 {
     private const int MaxPageSize = 100;
     private readonly IPersistence _persistence;
+    private readonly IClinicalWriteScopeFactory _writeScopeFactory;
+    private readonly IClinicClock _clock;
 
-    public DoctorService(IPersistence persistence)
+    public DoctorService(
+        IPersistence persistence,
+        IClinicalWriteScopeFactory writeScopeFactory,
+        IClinicClock clock)
     {
         _persistence = persistence;
+        _writeScopeFactory = writeScopeFactory;
+        _clock = clock;
     }
 
     public async Task<Pagination<DoctorModel.Response>> GetAll(
@@ -53,10 +60,12 @@ public class DoctorService : IDoctorService
     }
 
     public async Task<DoctorModel.Response> Create(
-        DoctorModel.Request request)
+    DoctorModel.Request request)
     {
         var (name, licenseNumber, specialityId) =
             ValidateRequest(request);
+
+        await using var scope = await _writeScopeFactory.BeginAsync();
 
         var speciality = await GetActiveSpeciality(specialityId);
 
@@ -66,6 +75,8 @@ public class DoctorService : IDoctorService
             speciality);
 
         var createdDoctor = await _persistence.Add(doctor);
+
+        await scope.CompleteAsync();
 
         return ToResponse(createdDoctor);
     }
@@ -77,26 +88,67 @@ public class DoctorService : IDoctorService
         var (name, licenseNumber, specialityId) =
             ValidateRequest(request);
 
+        await using var scope = await _writeScopeFactory.BeginAsync();
+
         var doctor = await GetActiveDoctor(id);
+
+        if (doctor.SpecialityId != specialityId)
+        {
+            await EnsureNoFutureBookedAppointments(id);
+        }
+
         var speciality = await GetActiveSpeciality(specialityId);
 
-        doctor.Update(
-            name,
-            licenseNumber,
-            speciality);
+        doctor.Update(name, licenseNumber, speciality);
 
         var updatedDoctor = await _persistence.Update(doctor);
+
+        await scope.CompleteAsync();
 
         return ToResponse(updatedDoctor);
     }
 
     public async Task Delete(Guid id)
     {
+        await using var scope = await _writeScopeFactory.BeginAsync();
+
         var doctor = await GetActiveDoctor(id);
+
+        await EnsureNoFutureBookedAppointments(id);
 
         doctor.Deactivate();
 
         await _persistence.Delete(doctor);
+
+        await scope.CompleteAsync();
+    }
+
+    private async Task EnsureNoFutureBookedAppointments(Guid doctorId)
+    {
+        var now = _clock.GetCurrentLocalDateTime();
+        var today = DateOnly.FromDateTime(now.DateTime);
+        var currentTime = TimeOnly.FromDateTime(now.DateTime);
+
+        var appointment = await _persistence.First<Appointment>(
+            current =>
+                !current.Deleted &&
+                current.DoctorId == doctorId &&
+                current.Status == AppointmentStatus.BOOKED &&
+                current.Availability != null &&
+                (
+                    current.Availability.Date > today ||
+                    (
+                        current.Availability.Date == today &&
+                        current.Availability.StartTime >= currentTime
+                    )
+                ));
+
+        if (appointment is not null)
+        {
+            throw new ConflictException(
+                "El médico tiene turnos reservados cuyo inicio no ha pasado.",
+                "DOCTOR_HAS_FUTURE_APPOINTMENTS");
+        }
     }
 
     private async Task<Doctor> GetActiveDoctor(Guid id)

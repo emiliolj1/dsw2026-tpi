@@ -52,11 +52,11 @@ en development.
 | G01 | Emilio | Ninguna | Integrada | docs/emilio-contratos-cierre | #21 | 11cd043 | Contrato y planificación integrados junto con G02 |
 | G02 | Emilio | G01, incluido en el mismo PR | Integrada | docs/emilio-contratos-cierre | #21 | 11cd043 | 72 pruebas originales aprobadas; alcance SQL verificado posteriormente en C01 |
 | C01 | Charly | G02 | Integrada | test/charly-sqlserver-base | #22 | 1645370 | 77 pruebas no SQL y 5 SQL aprobadas, sin fallidas ni omitidas; docs/backend/pruebas-sql.md |
-| C02 | Charly | G02 | Implementada localmente; pendiente de PR | feature/charly-catalogos-v17 | - | - | 87 pruebas no SQL y 7 SQL aprobadas; evidencia en la sección C02 |
+| C02 | Charly | G02 | Integrada | feature/charly-catalogos-v17 | #24 | 11cc6fe | 87 pruebas no SQL y 7 SQL aprobadas; evidencia en la sección C02 |
 | N01 | Nacho | G02 | Pendiente | - | - | - | - |
 | L01 | Lucas | G02 | Pendiente | - | - | - | - |
 | E01 | Emilio | G02, C01 | Pendiente | fix/emilio-autenticacion-cierre | - | - | - |
-| C03 | Charly | C01, C02 | Pendiente | - | - | - | - |
+| C03 | Charly | C01, C02 | Implementada localmente; pendiente de PR | fix/charly-bajas-relacionadas | - | - | 93 pruebas no SQL y 26 SQL aprobadas; concurrencia con reservas pendiente para C04 |
 | N02 | Nacho | N01 | Pendiente | - | - | - | - |
 | L02 | Lucas | L01, C01, N01 | Pendiente | - | - | - | - |
 | E02 | Emilio | G02, C01, E01 | Pendiente | fix/emilio-api-transversal | - | - | - |
@@ -178,7 +178,8 @@ Responsable: Charly.
 Fecha de verificación local: 2026-10-15.
 Rama: feature/charly-catalogos-v17.
 Base de trabajo: 2e27c5b.
-Estado: implementada localmente; pendiente de PR, revisión e integración.
+Estado: integrada mediante PR #24, aprobado por Emilio.
+SHA de merge en development: 11cc6fe.
 
 Cambios:
 - POST/PUT de médicos recibe specialtyId mediante serialización explícita,
@@ -218,6 +219,66 @@ Para consumir los catálogos:
 
 Sin cambios de esquema, migraciones ni acción GetMonthlyPlanning.
 Las políticas de bajas relacionadas y su atomicidad corresponden a C03.
+Registrar PR y SHA de merge después de integrar.
+
+## C03 — Bajas y relaciones de catálogos
+
+Responsable: Charly.
+Fecha de verificación local: 2026-10-16.
+Rama: fix/charly-bajas-relacionadas.
+Base de trabajo: 11cc6fe.
+Estado: implementada localmente; pendiente de PR, revisión e integración.
+
+Cambios:
+- Altas, modificaciones y bajas de médicos y especialidades utilizan
+  IClinicalWriteScopeFactory.
+- Las lecturas decisorias se realizan dentro del alcance de escritura.
+- Una especialidad con médicos activos y no eliminados devuelve
+  HTTP 409 con SPECIALTY_IN_USE.
+- La baja o reasignación de un médico con citas BOOKED cuyo inicio
+  no haya pasado devuelve HTTP 409 con DOCTOR_HAS_FUTURE_APPOINTMENTS.
+- La comparación utiliza el reloj local del centro.
+- El instante exacto de inicio también impide la operación.
+- Se permite editar nombre o matrícula conservando la especialidad.
+- Las bajas son lógicas y conservan el historial consultable.
+- Los controladores documentan las respuestas 409 en Swagger.
+- La fábrica HTTP InMemory utiliza un sustituto del alcance,
+  exclusivo de pruebas de contrato. Las garantías SQL se verifican
+  mediante la fábrica SQL real.
+
+Resultados:
+- DoctorServiceTests: 16 aprobadas.
+- SpecialityServiceTests: 12 aprobadas.
+- CatalogRelationsSqlTests: 19 casos incluidos en la regresión SQL.
+- Regresión completa no SQL: 93 aprobadas, 0 fallidas, 0 omitidas.
+- Regresión completa SQL: 26 aprobadas, 0 fallidas, 0 omitidas.
+- git diff --check sin observaciones.
+
+Las suites completas incluyen los casos específicos;
+los resultados no deben sumarse nuevamente.
+
+Verificaciones:
+- Especialidades en uso y relaciones con médicos inactivos o eliminados.
+- Rechazo de baja y reasignación con reservas futuras.
+- Límites de fecha y hora con reloj fijo.
+- Tratamiento de citas canceladas, atendidas, ausentes y eliminadas.
+- Conservación de datos y fechas de auditoría en los rechazos comprobados.
+- Consulta histórica después de eliminar médico y especialidad.
+- Rechazo de disponibilidad por HTTP para un médico eliminado,
+  utilizando login real de paciente.
+- Rechazo de una nueva reserva mediante el servicio real,
+  sin crear citas ni modificar el slot libre.
+- Reasignación permitida sin reservas futuras y posterior baja
+  de la especialidad anterior.
+
+Pendiente de integración cruzada:
+- Carrera entre baja de médico y reserva simultánea.
+- Ejecutarla en C04 cuando L02 utilice el alcance común.
+- C03 no demuestra todavía la serialización conjunta con el módulo
+  de reservas pendiente de Lucas.
+
+Sin nuevas migraciones ni modificaciones de los módulos de agenda
+y citas. No se cambió GetMonthlyPlanning.
 Registrar PR y SHA de merge después de integrar.
 
 ## Pendientes transversales conocidos

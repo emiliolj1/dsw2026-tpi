@@ -10,10 +10,14 @@ public class SpecialityService : ISpecialityService
 {
     private const int MaxPageSize = 100;
     private readonly IPersistence _persistence;
+    private readonly IClinicalWriteScopeFactory _writeScopeFactory;
 
-    public SpecialityService(IPersistence persistence)
+    public SpecialityService(
+        IPersistence persistence,
+        IClinicalWriteScopeFactory writeScopeFactory)
     {
         _persistence = persistence;
+        _writeScopeFactory = writeScopeFactory;
     }
 
     public async Task<Pagination<SpecialityModel.Response>> GetAll(
@@ -36,12 +40,16 @@ public class SpecialityService : ISpecialityService
     }
 
     public async Task<SpecialityModel.Response> Create(
-        SpecialityModel.Request request)
+      SpecialityModel.Request request)
     {
         var (name, description) = ValidateRequest(request);
-        var speciality = new Speciality(name, description);
 
+        await using var scope = await _writeScopeFactory.BeginAsync();
+
+        var speciality = new Speciality(name, description);
         var createdSpeciality = await _persistence.Add(speciality);
+
+        await scope.CompleteAsync();
 
         return ToResponse(createdSpeciality);
     }
@@ -51,20 +59,42 @@ public class SpecialityService : ISpecialityService
         SpecialityModel.Request request)
     {
         var (name, description) = ValidateRequest(request);
+
+        await using var scope = await _writeScopeFactory.BeginAsync();
+
         var speciality = await GetActiveSpeciality(id);
 
         speciality.Update(name, description);
 
         var updatedSpeciality = await _persistence.Update(speciality);
 
+        await scope.CompleteAsync();
+
         return ToResponse(updatedSpeciality);
     }
 
     public async Task Delete(Guid id)
     {
+        await using var scope = await _writeScopeFactory.BeginAsync();
+
         var speciality = await GetActiveSpeciality(id);
 
+        var activeDoctor = await _persistence.First<Doctor>(
+            doctor =>
+                doctor.SpecialityId == id &&
+                doctor.IsActive &&
+                !doctor.Deleted);
+
+        if (activeDoctor is not null)
+        {
+            throw new ConflictException(
+                "La especialidad tiene médicos activos asociados.",
+                "SPECIALTY_IN_USE");
+        }
+
         await _persistence.Delete(speciality);
+
+        await scope.CompleteAsync();
     }
 
     private async Task<Speciality> GetActiveSpeciality(Guid id)

@@ -11,15 +11,36 @@ namespace Dsw2026Tpi.Tests.Services;
 public class SpecialityServiceTests
 {
     private readonly Mock<IPersistence> _persistence;
-    private readonly SpecialityService _service;
+private readonly Mock<IClinicalWriteScopeFactory> _writeScopeFactory;
+private readonly Mock<IClinicalWriteScope> _writeScope;
+private readonly SpecialityService _service;
 
-    public SpecialityServiceTests()
-    {
-        _persistence = new Mock<IPersistence>();
-        _service = new SpecialityService(_persistence.Object);
-    }
+public SpecialityServiceTests()
+{
+    _persistence = new Mock<IPersistence>();
+    _writeScopeFactory = new Mock<IClinicalWriteScopeFactory>();
+    _writeScope = new Mock<IClinicalWriteScope>();
 
-    [Fact]
+    _writeScopeFactory
+        .Setup(factory => factory.BeginAsync(
+            It.IsAny<CancellationToken>()))
+        .ReturnsAsync(_writeScope.Object);
+
+    _writeScope
+        .Setup(scope => scope.CompleteAsync(
+            It.IsAny<CancellationToken>()))
+        .Returns(Task.CompletedTask);
+
+    _writeScope
+        .Setup(scope => scope.DisposeAsync())
+        .Returns(ValueTask.CompletedTask);
+
+    _service = new SpecialityService(
+        _persistence.Object,
+        _writeScopeFactory.Object);
+}
+
+[Fact]
     public async Task Create_WithValidRequest_CreatesAndReturnsSpeciality()
     {
         var request = new SpecialityModel.Request(
@@ -254,5 +275,102 @@ public class SpecialityServiceTests
         Assert.Equal(
             "Cardiología",
             returnedSpeciality.Name);
+    }
+
+    [Theory]
+    [InlineData(true, false, true)]
+    [InlineData(false, false, false)]
+    [InlineData(true, true, false)]
+    public async Task Delete_ChecksActiveDoctorsWithinWriteScope(
+    bool isActive,
+    bool isDeleted,
+    bool shouldConflict)
+    {
+        var speciality = new Speciality(
+            "Cardiología",
+            "Especialidad para verificar relaciones");
+
+        var doctor = new Doctor(
+            "Ana Pérez",
+            "MP-RELATION",
+            speciality)
+        {
+            Deleted = isDeleted
+        };
+
+        if (!isActive)
+        {
+            doctor.Deactivate();
+        }
+
+        var otherSpeciality = new Speciality(
+            "Neurología",
+            "Otra especialidad para verificar relaciones");
+
+        var unrelatedDoctor = new Doctor(
+            "Bruno Díaz",
+            "MP-UNRELATED",
+            otherSpeciality);
+
+        var doctors = new[] { doctor, unrelatedDoctor };
+
+        _persistence
+            .Setup(p => p.GetById<Speciality>(
+                speciality.Id,
+                It.IsAny<string[]>()))
+            .Callback(() =>
+            {
+                // La lectura debe ocurrir después de abrir el alcance.
+                _writeScopeFactory.Verify(
+                    factory => factory.BeginAsync(
+                        It.IsAny<CancellationToken>()),
+                    Times.Once);
+            })
+            .ReturnsAsync(speciality);
+
+        _persistence
+            .Setup(p => p.First<Doctor>(
+                It.IsAny<Expression<Func<Doctor, bool>>>(),
+                It.IsAny<string[]>()))
+            .ReturnsAsync((
+                Expression<Func<Doctor, bool>> predicate,
+                string[] includes) =>
+                    doctors.FirstOrDefault(predicate.Compile()));
+
+        _persistence
+            .Setup(p => p.Delete(speciality))
+            .ReturnsAsync(speciality);
+
+        if (shouldConflict)
+        {
+            await Assert.ThrowsAsync<ConflictException>(
+                () => _service.Delete(speciality.Id));
+
+            _persistence.Verify(
+                p => p.Delete(It.IsAny<Speciality>()),
+                Times.Never);
+
+            _writeScope.Verify(
+                scope => scope.CompleteAsync(
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+        else
+        {
+            await _service.Delete(speciality.Id);
+
+            _persistence.Verify(
+                p => p.Delete(speciality),
+                Times.Once);
+
+            _writeScope.Verify(
+                scope => scope.CompleteAsync(
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        _writeScope.Verify(
+            scope => scope.DisposeAsync(),
+            Times.Once);
     }
 }

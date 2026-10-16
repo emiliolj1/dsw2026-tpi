@@ -37,6 +37,7 @@ public class SpecialityController : AppController
     [Authorize(Policy = Policies.AdminPolicy)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create(
         [FromBody] SpecialityModel.Request request)
     {
@@ -52,6 +53,7 @@ public class SpecialityController : AppController
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Update(
         [FromRoute] Guid id,
         [FromBody] SpecialityModel.Request request)
@@ -68,6 +70,8 @@ public class SpecialityController : AppController
     StatusCodes.Status200OK,
     "text/plain")]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+
     public async Task<IActionResult> Delete([FromRoute] Guid id)
     {
         await _service.Delete(id);
