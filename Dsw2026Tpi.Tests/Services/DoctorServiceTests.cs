@@ -323,4 +323,139 @@ public class DoctorServiceTests
                     includes.Contains(nameof(Doctor.Speciality)))),
             Times.Once);
     }
+
+    [Fact]
+    public async Task GetAll_WithEmptySpecialtyId_ThrowsValidationException()
+    {
+        await Assert.ThrowsAsync<ValidationException>(
+            () => _service.GetAll(
+                pageSize: 10,
+                pageIndex: 0,
+                specialtyId: Guid.Empty));
+
+        _persistence.Verify(
+            p => p.Paginate<Doctor, string>(
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<Expression<Func<Doctor, bool>>>(),
+                It.IsAny<Expression<Func<Doctor, string>>>(),
+                It.IsAny<string[]>()),
+            Times.Never);
+    }
+
+    [Theory]
+    [InlineData(null, 2)]
+    [InlineData(" Ana ", 1)]
+    public async Task GetAll_WithSpecialtyFilter_CombinesFiltersAndExcludesDeleted(
+        string? name,
+        int expectedTotal)
+    {
+        var targetSpeciality = new Speciality(
+            "Cardiología",
+            "Especialidad buscada");
+
+        var otherSpeciality = new Speciality(
+            "Neurología",
+            "Otra especialidad");
+
+        var deletedSpeciality = new Speciality(
+            "Pediatría",
+            "Especialidad eliminada")
+        {
+            Deleted = true
+        };
+
+        var ana = new Doctor("Ana Pérez", "MP-101", targetSpeciality);
+        var bruno = new Doctor("Bruno Díaz", "MP-102", targetSpeciality);
+
+        var inactive = new Doctor(
+            "Ana Inactiva", "MP-103", targetSpeciality);
+        inactive.Deactivate();
+
+        var deleted = new Doctor(
+            "Ana Eliminada", "MP-104", targetSpeciality)
+        {
+            Deleted = true
+        };
+
+        var other = new Doctor(
+            "Ana Otra", "MP-105", otherSpeciality);
+
+        var relatedToDeleted = new Doctor(
+            "Ana Sin Especialidad Vigente",
+            "MP-106",
+            deletedSpeciality);
+
+        var doctors = new[]
+        {
+        ana,
+        bruno,
+        inactive,
+        deleted,
+        other,
+        relatedToDeleted
+    };
+
+        _persistence
+            .Setup(p => p.Paginate<Doctor, string>(
+                10,
+                0,
+                It.IsAny<Expression<Func<Doctor, bool>>>(),
+                It.IsAny<Expression<Func<Doctor, string>>>(),
+                It.IsAny<string[]>()))
+            .ReturnsAsync((
+                int pageSize,
+                int pageIndex,
+                Expression<Func<Doctor, bool>> predicate,
+                Expression<Func<Doctor, string>> sortOrder,
+                string[] includes) =>
+            {
+                var filtered = doctors
+                    .AsQueryable()
+                    .Where(predicate)
+                    .OrderBy(sortOrder)
+                    .ToList();
+
+                return new Pagination<Doctor>(
+                    pageSize,
+                    pageIndex,
+                    filtered.Count,
+                    filtered);
+            });
+
+        var result = await _service.GetAll(
+            pageSize: 10,
+            pageIndex: 0,
+            name: name,
+            specialtyId: targetSpeciality.Id);
+
+        Assert.Equal(expectedTotal, result.Total);
+        Assert.Equal(expectedTotal, result.Data.Count());
+
+        Assert.Contains(result.Data, doctor => doctor.Id == ana.Id);
+
+        if (name is null)
+        {
+            Assert.Contains(result.Data, doctor => doctor.Id == bruno.Id);
+        }
+        else
+        {
+            Assert.DoesNotContain(
+                result.Data,
+                doctor => doctor.Id == bruno.Id);
+        }
+
+        Assert.All(result.Data, doctor =>
+            Assert.Equal(targetSpeciality.Id, doctor.Specialty?.Id));
+
+        // Sin filtro de especialidad también deben excluirse
+        // médicos asociados a especialidades eliminadas.
+        var unfiltered = await _service.GetAll(10, 0);
+
+        Assert.Equal(3, unfiltered.Total);
+
+        Assert.DoesNotContain(
+            unfiltered.Data,
+            doctor => doctor.Id == relatedToDeleted.Id);
+    }
 }

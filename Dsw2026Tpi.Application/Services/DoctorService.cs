@@ -17,21 +17,35 @@ public class DoctorService : IDoctorService
     }
 
     public async Task<Pagination<DoctorModel.Response>> GetAll(
-        int pageSize,
-        int pageIndex,
-        string? name = null)
+    int pageSize,
+    int pageIndex,
+    string? name = null,
+    Guid? specialtyId = null)
     {
         ValidatePagination(pageSize, pageIndex);
 
         var normalizedName = ValidateOptionalName(name);
 
+        if (specialtyId == Guid.Empty)
+        {
+            throw new ValidationException()
+                .WithDetail(
+                    nameof(specialtyId),
+                    "Debe ser un identificador válido.");
+        }
+
         var doctors = await _persistence.Paginate<Doctor, string>(
             pageSize,
             pageIndex,
             doctor =>
+                !doctor.Deleted &&
                 doctor.IsActive &&
+                doctor.Speciality != null &&
+                !doctor.Speciality.Deleted &&
                 (normalizedName == null ||
-                 doctor.Name.Contains(normalizedName)),
+                 doctor.Name.Contains(normalizedName)) &&
+                (specialtyId == null ||
+                 doctor.SpecialityId == specialtyId.Value),
             doctor => doctor.Name,
             nameof(Doctor.Speciality));
 
