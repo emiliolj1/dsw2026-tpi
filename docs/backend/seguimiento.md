@@ -52,7 +52,7 @@ en development.
 | G01 | Emilio | Ninguna | Integrada | docs/emilio-contratos-cierre | #21 | 11cd043 | Contrato y planificación integrados junto con G02 |
 | G02 | Emilio | G01, incluido en el mismo PR | Integrada | docs/emilio-contratos-cierre | #21 | 11cd043 | 72 pruebas originales aprobadas; alcance SQL verificado posteriormente en C01 |
 | C01 | Charly | G02 | Integrada | test/charly-sqlserver-base | #22 | 1645370 | 77 pruebas no SQL y 5 SQL aprobadas, sin fallidas ni omitidas; docs/backend/pruebas-sql.md |
-| C02 | Charly | G02 | Pendiente | - | - | - | - |
+| C02 | Charly | G02 | Implementada localmente; pendiente de PR | feature/charly-catalogos-v17 | - | - | 87 pruebas no SQL y 7 SQL aprobadas; evidencia en la sección C02 |
 | N01 | Nacho | G02 | Pendiente | - | - | - | - |
 | L01 | Lucas | G02 | Pendiente | - | - | - | - |
 | E01 | Emilio | G02, C01 | Pendiente | fix/emilio-autenticacion-cierre | - | - | - |
@@ -171,6 +171,54 @@ Límites:
 - Las migraciones futuras de N04 deberán verificarse al integrarse.
 - La ejecución conjunta de pruebas SQL y no SQL en un único proceso
   no fue acreditada; se verificaron mediante comandos separados.
+
+## C02 — Contratos y filtros de catálogos
+
+Responsable: Charly.
+Fecha de verificación local: 2026-10-15.
+Rama: feature/charly-catalogos-v17.
+Base de trabajo: 2e27c5b.
+Estado: implementada localmente; pendiente de PR, revisión e integración.
+
+Cambios:
+- POST/PUT de médicos recibe specialtyId mediante serialización explícita,
+  conservando SpecialityId como nombre interno C#.
+- GET de médicos admite specialtyId opcional, combinado con name.
+- El filtro excluye médicos inactivos o eliminados y especialidades eliminadas.
+- Los filtros se aplican antes del conteo y la paginación.
+- Ambos catálogos usan pageSize=10 y pageIndex=0 por defecto.
+- Se conservan las validaciones de tamaño 1–100 y nombre de 3–100 caracteres.
+- Ambos DELETE responden HTTP 200, text/plain y cuerpo exacto ok.
+- Se actualizó la declaración de respuesta DELETE en Swagger.
+- Se conserva la respuesta de médico con specialty anidada.
+
+Evidencia:
+- DoctorServiceTests: 13 aprobadas.
+- DoctorServiceTests y SpecialityServiceTests: 22 aprobadas.
+- CatalogContractTests: 7 aprobadas.
+- CatalogFilterSqlTests: 2 aprobadas con SQL Server real.
+- Regresión completa no SQL: 87 aprobadas, 0 fallidas, 0 omitidas.
+- Regresión completa SQL: 7 aprobadas, 0 fallidas, 0 omitidas.
+- git diff --check sin observaciones.
+
+Los resultados específicos están incluidos en las suites completas;
+no deben sumarse nuevamente.
+
+Se verificaron JSON literal, POST/PUT con entidad de respuesta,
+DELETE text/plain, valores predeterminados, permisos existentes,
+filtros combinados y páginas sin duplicados con nombres repetidos.
+
+La ejecución SQL sin la variable de conexión falló con un diagnóstico
+explícito. Después de configurarla, los casos pasaron.
+
+Para consumir los catálogos:
+- Usar specialtyId como nombre público.
+- Omitir name cuando se limpia una búsqueda.
+- Leer DELETE como texto, sin intentar convertir ok a JSON.
+
+Sin cambios de esquema, migraciones ni acción GetMonthlyPlanning.
+Las políticas de bajas relacionadas y su atomicidad corresponden a C03.
+Registrar PR y SHA de merge después de integrar.
 
 ## Pendientes transversales conocidos
 

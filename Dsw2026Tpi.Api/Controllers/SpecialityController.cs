@@ -21,8 +21,8 @@ public class SpecialityController : AppController
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetAll(
-        [FromQuery] int pageSize,
-        [FromQuery] int pageIndex,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] int pageIndex = 0,
         [FromQuery] string? name = null)
     {
         var specialities = await _service.GetAll(
@@ -63,12 +63,15 @@ public class SpecialityController : AppController
 
     [HttpDelete("{id}")]
     [Authorize(Policy = Policies.AdminPolicy)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(
+    typeof(string),
+    StatusCodes.Status200OK,
+    "text/plain")]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete([FromRoute] Guid id)
     {
         await _service.Delete(id);
 
-        return NoContent();
+        return Content("ok", "text/plain");
     }
 }
