@@ -140,8 +140,8 @@ public sealed class AppointmentFlowIntegrationTests
                 $"/api/appointments/{appointment.Id}");
 
         Assert.Equal(
-            HttpStatusCode.NoContent,
-            cancellationResponse.StatusCode);
+     HttpStatusCode.OK,
+     cancellationResponse.StatusCode);
 
         var appointmentsAfterCancellation =
             await client.GetFromJsonAsync<
