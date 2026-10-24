@@ -473,14 +473,12 @@ public sealed class CatalogRelationsSqlTests
 
         var historicalAppointment = Assert.Single(history.Data);
 
-        Assert.Equal(data.Appointment.Id, historicalAppointment.Id);
-        Assert.Equal(status.ToString(), historicalAppointment.Status);
-        Assert.Equal(data.Doctor.Id, historicalAppointment.Doctor.Id);
+        Assert.Equal(data.Appointment.Id, historicalAppointment.AppointmentsId);
+        Assert.Equal(status.ToString(), historicalAppointment.AppointmentsStatus);
+        Assert.Equal(data.Doctor.Id, historicalAppointment.Doctor.DoctorId);
         Assert.Equal(data.Doctor.Name, historicalAppointment.Doctor.Name);
-        Assert.Equal(data.Specialty.Id, historicalAppointment.Specialty.Id);
-        Assert.Equal(
-            data.Specialty.Name,
-            historicalAppointment.Specialty.Name);
+        Assert.Equal(data.Specialty.Id, historicalAppointment.Doctor.Specialty.SpecialtyId);
+        Assert.Equal(data.Specialty.Name, historicalAppointment.Doctor.Specialty.Name);
 
         using var patientClient = _fixture.Factory.CreateClient();
 

@@ -4,19 +4,24 @@ namespace Dsw2026Tpi.Application.Interfaces;
 
 public interface IAppointmentService
 {
-    Task Create(
-    AppointmentModel.Request request,
-    Guid patientUserId);
+    Task<AppointmentModel.Response> Create(
+        AppointmentModel.Request request,
+        Guid patientUserId);
 
     Task<IEnumerable<AppointmentModel.Response>> GetActiveByPatient(
-    long dni,
-    Guid patientUserId);
+        long dni,
+        Guid patientUserId);
 
     Task Cancel(
-    Guid appointmentId,
-    Guid patientUserId);
+        Guid appointmentId,
+        Guid patientUserId);
 
-    Task<IEnumerable<AppointmentModel.Response>> GetByDate(DateOnly date);
+    Task<AppointmentModel.PagedResponse> GetByDate(
+        DateOnly date,
+        int pageSize = 10,
+        int pageIndex = 0,
+        string? status = null);
 
-    Task<AppointmentModel.PagedResponse> Search(AppointmentModel.SearchRequest request);
+    Task<AppointmentModel.PagedResponse> Search(
+        AppointmentModel.SearchRequest request);
 }

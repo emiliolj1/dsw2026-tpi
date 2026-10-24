@@ -5,25 +5,30 @@ using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Interfaces;
 using Moq;
 using System.Linq.Expressions;
+using Dsw2026Tpi.Application.Interfaces;
 
 namespace Dsw2026Tpi.Tests.Services;
 
 public class AppointmentServiceTests
 {
     private readonly Mock<IPersistence> _persistence;
-    private readonly Mock<IAppointmentPersistence>
-        _appointmentPersistence;
+    private readonly Mock<IAppointmentPersistence> _appointmentPersistence;
+    private readonly Mock<IClinicClock> _clock;
     private readonly AppointmentService _service;
 
     public AppointmentServiceTests()
     {
         _persistence = new Mock<IPersistence>();
-        _appointmentPersistence =
-            new Mock<IAppointmentPersistence>();
+        _appointmentPersistence = new Mock<IAppointmentPersistence>();
+        _clock = new Mock<IClinicClock>();
+        _clock
+            .Setup(clock => clock.GetCurrentLocalDateTime())
+            .Returns(new DateTimeOffset(2026, 10, 21, 10, 0, 0, TimeSpan.FromHours(-3)));
 
         _service = new AppointmentService(
             _persistence.Object,
-            _appointmentPersistence.Object);
+            _appointmentPersistence.Object,
+            _clock.Object);
     }
 
     [Fact]
