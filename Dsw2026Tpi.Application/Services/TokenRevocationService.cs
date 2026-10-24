@@ -1,46 +1,64 @@
-using Dsw2026Tpi.Application.Interfaces;
 using System.Collections.Concurrent;
+using Dsw2026Tpi.Application.Interfaces;
 
 namespace Dsw2026Tpi.Application.Services;
 
 public sealed class TokenRevocationService : ITokenRevocationService
 {
+    private readonly TimeProvider _timeProvider;
+
     private readonly ConcurrentDictionary<string, DateTimeOffset>
         _revokedTokens = new(StringComparer.Ordinal);
 
-    public void Revoke(
-        string tokenId,
-        DateTimeOffset expiresAt)
+    public TokenRevocationService(TimeProvider timeProvider)
+    {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        _timeProvider = timeProvider;
+    }
+
+    public void Revoke(string tokenId, DateTimeOffset expiresAt)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(tokenId);
 
-        if (expiresAt <= DateTimeOffset.UtcNow)
+        var now = _timeProvider.GetUtcNow();
+        RemoveExpired(now);
+
+        if (expiresAt <= now)
         {
             return;
         }
 
-        _revokedTokens[tokenId] = expiresAt;
+        // Revocar nuevamente no debe acortar una revocación existente.
+        _revokedTokens.AddOrUpdate(
+            tokenId,
+            expiresAt,
+            (_, currentExpiration) =>
+                currentExpiration >= expiresAt
+                    ? currentExpiration
+                    : expiresAt);
     }
 
     public bool IsRevoked(string tokenId)
     {
-        if (string.IsNullOrWhiteSpace(tokenId) ||
-            !_revokedTokens.TryGetValue(
-                tokenId,
-                out var expiresAt))
+        var now = _timeProvider.GetUtcNow();
+        RemoveExpired(now);
+
+        return !string.IsNullOrWhiteSpace(tokenId)
+            && _revokedTokens.TryGetValue(tokenId, out var expiresAt)
+            && expiresAt > now;
+    }
+
+    private void RemoveExpired(DateTimeOffset now)
+    {
+        foreach (var entry in _revokedTokens)
         {
-            return false;
+            if (entry.Value <= now)
+            {
+                // Elimina solo si la entrada conserva el mismo valor.
+                // Otra solicitud podría haber extendido la revocación.
+                ((ICollection<KeyValuePair<string, DateTimeOffset>>)
+                    _revokedTokens).Remove(entry);
+            }
         }
-
-        if (expiresAt > DateTimeOffset.UtcNow)
-        {
-            return true;
-        }
-
-        _revokedTokens.TryRemove(
-            tokenId,
-            out _);
-
-        return false;
     }
 }

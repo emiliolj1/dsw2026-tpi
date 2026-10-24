@@ -18,6 +18,14 @@ public static class DependencyInjectionConfigurationExtensions
     {
         services.AddSingleton<TimeProvider>(TimeProvider.System);
 
+        services.AddSingleton<
+            IValidateOptions<JwtOptions>,
+            JwtOptionsValidator>();
+
+        services.AddOptions<JwtOptions>()
+            .Bind(configuration.GetSection(JwtOptions.SectionName))
+            .ValidateOnStart();
+
         services.AddOptions<ClinicOptions>()
             .Bind(configuration.GetSection(ClinicOptions.SectionName))
             .Validate(options =>

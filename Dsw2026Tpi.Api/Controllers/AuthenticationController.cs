@@ -26,9 +26,10 @@ public class AuthenticationController : AppController
     [AllowAnonymous]
     [HttpPost("admin/login")]
     [EnableRateLimiting(RateLimitPolicies.AdminLogin)]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(LoginAdminModel.Response), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Login(
         [FromBody] LoginAdminModel.Request request)
     {
@@ -39,9 +40,11 @@ public class AuthenticationController : AppController
     [AllowAnonymous]
     [HttpPost("patient/login")]
     [EnableRateLimiting(RateLimitPolicies.PatientLogin)]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(LoginPatientModel.Response), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> LoginPatient(
         [FromBody] LoginPatientModel.Request request)
     {
@@ -51,7 +54,7 @@ public class AuthenticationController : AppController
 
     [HttpPost("logout")]
     [Authorize]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status200OK, "text/plain")]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public IActionResult Logout()
     {
@@ -76,6 +79,6 @@ public class AuthenticationController : AppController
             DateTimeOffset.FromUnixTimeSeconds(
                 expirationUnixSeconds));
 
-        return Ok("ok");
+        return Content("ok", "text/plain");
     }
 }

@@ -32,24 +32,37 @@ public sealed class IdentitySeeder : IInitialAdminSeeder
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var email = _options.Email.Trim();
-        var password = _options.Password;
-
-        if (string.IsNullOrWhiteSpace(email) ||
-            string.IsNullOrWhiteSpace(password))
-        {
-            _logger.LogWarning(
-                "No se configuraron las credenciales del administrador inicial.");
-
-            return;
-        }
-
+        // Los roles se verifican independientemente del alta del admin.
         await EnsureRoleExistsAsync(Roles.Administrator);
         await EnsureRoleExistsAsync(Roles.Patient);
 
         cancellationToken.ThrowIfCancellationRequested();
 
+        var email = _options.Email?.Trim() ?? string.Empty;
+        var password = _options.Password;
+
+        if (string.IsNullOrWhiteSpace(email) ||
+            string.IsNullOrWhiteSpace(password))
+        {
+            throw new InvalidOperationException(
+                "Configuración incompleta del administrador inicial. " +
+                "Configurá InitialAdmin:Email e InitialAdmin:Password " +
+                "mediante secretos locales o variables de entorno.");
+        }
+
         var user = await _userManager.FindByEmailAsync(email);
+        // Una identidad existente debe ser un administrador utilizable.
+        // No promover pacientes ni reutilizar cuentas dadas de baja.
+        if (user is not null &&
+            (user.Deleted ||
+             !await _userManager.IsInRoleAsync(
+                 user, Roles.Administrator) ||
+             !await _userManager.HasPasswordAsync(user)))
+        {
+            throw new InvalidOperationException(
+                "InitialAdmin:Email corresponde a una identidad " +
+                "incompatible, eliminada o sin contraseña administrativa.");
+        }
         var userCreated = false;
 
         if (user is null)

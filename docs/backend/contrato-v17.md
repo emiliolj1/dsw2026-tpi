@@ -456,16 +456,21 @@ POST /api/auth/logout
 
 - Requiere un JWT válido.
 - Revoca únicamente el token enviado en esa solicitud.
-- El controlador de la base inicial devuelve HTTP 200 mediante Ok("ok").
-- E01 debe verificar y documentar el Content-Type y cuerpo efectivo
-  por HTTP, incluyendo su negociación de contenido.
-- No debe declararse validado el contrato HTTP de logout solo por
-  inspeccionar el controlador.
+- Devuelve HTTP 200, Content-Type text/plain y cuerpo literal ok.
+- El mismo token es rechazado posteriormente con HTTP 401.
+- Otros tokens del usuario permanecen válidos.
 
-Alcance acordado: revocación local en una instancia.
+Este comportamiento fue verificado por HTTP con SQL Server real
+en la implementación local de E01.
+
+La validación JWT utiliza ClockSkew igual a cero.
+La revocación cubre la vigencia del token hasta su expiración.
+
+Alcance acordado: revocación local en memoria, en una instancia.
 No se garantiza persistencia tras reinicios ni distribución entre instancias.
-La retención de la revocación debe cubrir la vigencia efectiva del JWT,
-incluida su tolerancia de expiración.
+
+Evidencia y estado de integración: evidencia-autenticacion.md
+y seguimiento.md.
 
 ## 13. Errores
 
