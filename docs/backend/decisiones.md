@@ -160,6 +160,12 @@ independientes mediante el PR #22, SHA de merge 1645370.
 Las verificaciones de concurrencia entre módulos se completan
 en sus tareas correspondientes y en C04.
 
+El alcance se inicia antes de las lecturas decisorias.
+Solo CompleteAsync confirma; Dispose sin completar revierte.
+
+Se conservan rowversion e índices únicos como defensas adicionales.
+
+C04 medirá el efecto de la serialización compartida sobre el rendimiento.
 
 ## D10 — Bajas, relaciones y estados
 
