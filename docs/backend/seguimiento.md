@@ -55,7 +55,7 @@ en development.
 | C02 | Charly | G02 | Integrada | feature/charly-catalogos-v17 | #24 | 11cc6fe | 87 pruebas no SQL y 7 SQL aprobadas; evidencia en la sección C02 |
 | N01 | Nacho | G02 | Pendiente | - | - | - | - |
 | L01 | Lucas | G02 | Pendiente | - | - | - | - |
-| E01 | Emilio | G02, C01 | Pendiente | fix/emilio-autenticacion-cierre | - | - | - |
+| E01 | Emilio | G02, C01 | Implementada localmente; pendiente de PR | fix/emilio-autenticacion-cierre | - | - | 112 pruebas no SQL y 46 SQL aprobadas; docs/backend/evidencia-autenticacion.md |
 | C03 | Charly | C01, C02 | Implementada localmente; pendiente de PR | fix/charly-bajas-relacionadas | - | - | 93 pruebas no SQL y 26 SQL aprobadas; concurrencia con reservas pendiente para C04 |
 | N02 | Nacho | N01 | Pendiente | - | - | - | - |
 | L02 | Lucas | L01, C01, N01 | Pendiente | - | - | - | - |

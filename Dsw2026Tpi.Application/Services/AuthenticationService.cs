@@ -3,16 +3,16 @@ using Dsw2026Tpi.Application.Interfaces;
 using Dsw2026Tpi.CrossCutting.Exceptions;
 using Dsw2026Tpi.CrossCutting.Helpers;
 using Dsw2026Tpi.CrossCutting.Identity;
-using Dsw2026Tpi.CrossCutting.Resources;
+using Dsw2026Tpi.Data;
 using Dsw2026Tpi.Data.Identity;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Logging;
 using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Interfaces;
-
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
 
 namespace Dsw2026Tpi.Application.Services;
-
 
 public class AuthenticationService : IAuthenticationService
 {
@@ -22,13 +22,20 @@ public class AuthenticationService : IAuthenticationService
     private readonly JwtService _jwtService;
     private readonly ILogger<AuthenticationService> _logger;
     private readonly IPersistence _persistence;
+    private readonly IClinicalWriteScopeFactory _writeScopeFactory;
+    private readonly Dsw2026TpiDbContext _applicationContext;
+    private readonly AuthenticationDbContext _identityContext;
 
-    public AuthenticationService(UserManager<ApplicationUser> userManager,
+    public AuthenticationService(
+        UserManager<ApplicationUser> userManager,
         ISignInService signInManager,
         RoleManager<IdentityRole<Guid>> roleManager,
         JwtService jwtService,
         ILogger<AuthenticationService> logger,
-        IPersistence persistence)
+        IPersistence persistence,
+        IClinicalWriteScopeFactory writeScopeFactory,
+        Dsw2026TpiDbContext applicationContext,
+        AuthenticationDbContext identityContext)
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -36,14 +43,18 @@ public class AuthenticationService : IAuthenticationService
         _jwtService = jwtService;
         _logger = logger;
         _persistence = persistence;
+        _writeScopeFactory = writeScopeFactory;
+        _applicationContext = applicationContext;
+        _identityContext = identityContext;
     }
 
     public async Task<LoginAdminModel.Response> LoginAdmin(
-    LoginAdminModel.Request request)
+        LoginAdminModel.Request request)
     {
-        if (!request.Email.IsEmailValid() ||
-     string.IsNullOrWhiteSpace(request.Password) ||
-     request.Password.Length < 8)
+        if (request is null ||
+            !request.Email.IsEmailValid() ||
+            string.IsNullOrWhiteSpace(request.Password) ||
+            request.Password.Length < 8)
         {
             throw new ValidationException();
         }
@@ -58,20 +69,18 @@ public class AuthenticationService : IAuthenticationService
             throw new AuthenticationException();
         }
 
-        var passwordIsValid =
-            await _signInManager.CheckPassword(
-                user,
-                request.Password);
+        var passwordIsValid = await _signInManager.CheckPassword(
+            user,
+            request.Password);
 
-        var isAdministrator =
-            await _userManager.IsInRoleAsync(
-                user,
-                Roles.Administrator);
+        var isAdministrator = await _userManager.IsInRoleAsync(
+            user,
+            Roles.Administrator);
 
         if (!passwordIsValid || !isAdministrator)
         {
             _logger.LogWarning(
-                "Intento fallido de login administrativo para el usuario {UserId}.",
+                "Intento fallido de login administrativo para {UserId}.",
                 user.Id);
 
             throw new AuthenticationException();
@@ -82,7 +91,7 @@ public class AuthenticationService : IAuthenticationService
             Roles.Administrator);
 
         _logger.LogInformation(
-            "Login administrativo exitoso para el usuario {UserId}.",
+            "Login administrativo exitoso para {UserId}.",
             user.Id);
 
         return new LoginAdminModel.Response(
@@ -91,46 +100,98 @@ public class AuthenticationService : IAuthenticationService
     }
 
     public async Task<LoginPatientModel.Response> LoginPatient(
-    LoginPatientModel.Request request)
+        LoginPatientModel.Request request)
     {
-        if (!request.Email.IsEmailValid() ||
+        if (request is null ||
+            !request.Email.IsEmailValid() ||
             request.Dni is < 1_000_000 or > 99_999_999)
         {
             throw new ValidationException();
         }
 
+        if (_identityContext.Database.CurrentTransaction is not null ||
+            _identityContext.ChangeTracker.HasChanges())
+        {
+            throw new InvalidOperationException(
+                "El login debe comenzar sin una transacción " +
+                "ni cambios pendientes en Identity.");
+        }
+
+        // Adquiere el bloqueo SQL antes de las lecturas decisorias.
+        await using var scope = await _writeScopeFactory.BeginAsync();
+
+        var transaction =
+            _applicationContext.Database.CurrentTransaction
+            ?? throw new InvalidOperationException(
+                "El alcance no proporcionó una transacción SQL.");
+
+        // Ambos contextos utilizan la misma base en este proyecto.
+        // Application conserva la propiedad de conexión y transacción.
+        _identityContext.Database.SetDbConnection(
+            _applicationContext.Database.GetDbConnection(),
+            contextOwnsConnection: false);
+
+        await using var identityTransaction =
+            await _identityContext.Database.UseTransactionAsync(
+                transaction.GetDbTransaction());
+
+        _identityContext.ChangeTracker.Clear();
+
+        try
+        {
+            var result = await LoginPatientWithinScope(request);
+
+            await scope.CompleteAsync();
+
+            _logger.LogInformation(
+                "Login de paciente confirmado.");
+
+            return result;
+        }
+        catch
+        {
+            // El alcance revierte SQL; no conservar entidades fallidas.
+            _identityContext.ChangeTracker.Clear();
+            throw;
+        }
+    }
+
+    private async Task<LoginPatientModel.Response> LoginPatientWithinScope(
+        LoginPatientModel.Request request)
+    {
         var email = request.Email.Trim();
+
+        // Estas consultas se ejecutan después de adquirir el bloqueo.
         var user = await _userManager.FindByEmailAsync(email);
 
         if (user?.Deleted == true)
         {
-            _logger.LogWarning(
-                "Intento fallido de login de paciente para el usuario {UserId}.",
-                user.Id);
-
             throw new AuthenticationException();
         }
 
+        // También se consultan bajas lógicas para no recrear vínculos
+        // eliminados ni colisionar con sus índices únicos.
+        var patients = _applicationContext.Set<Patient>()
+            .IgnoreQueryFilters();
+
         var patientByUser = user is null
             ? null
-            : await _persistence.First<Patient>(
+            : await patients.SingleOrDefaultAsync(
                 patient => patient.UserId == user.Id);
 
-        var patientByDni = await _persistence.First<Patient>(
+        var patientByDni = await patients.SingleOrDefaultAsync(
             patient => patient.Dni == request.Dni);
 
         var credentialsMismatch =
+            patientByUser?.Deleted == true ||
+            patientByDni?.Deleted == true ||
             (patientByUser is not null &&
-             patientByUser.Dni != request.Dni) ||
+                patientByUser.Dni != request.Dni) ||
             (patientByDni is not null &&
-             (user is null || patientByDni.UserId != user.Id));
+                (user is null || patientByDni.UserId != user.Id));
 
         if (credentialsMismatch)
         {
-            _logger.LogWarning(
-                "Intento fallido de login de paciente para el usuario {UserId}.",
-                user?.Id);
-
             throw new AuthenticationException();
         }
 
@@ -140,48 +201,43 @@ public class AuthenticationService : IAuthenticationService
                 "El rol requerido para pacientes no está configurado.");
         }
 
-        var userCreated = false;
-        var roleAdded = false;
-
         if (user is null)
         {
+            var now = DateTime.UtcNow;
+
             user = new ApplicationUser
             {
                 Id = Guid.NewGuid(),
                 UserName = email,
                 Email = email,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = now,
+                UpdatedAt = now
             };
 
-            var createResult =
-                await _userManager.CreateAsync(user);
+            var createResult = await _userManager.CreateAsync(user);
 
             if (!createResult.Succeeded)
             {
                 throw new InvalidOperationException(
                     "No se pudo crear la identidad del paciente.");
             }
-
-            userCreated = true;
         }
 
-        var currentRoles =
-            await _userManager.GetRolesAsync(user);
+        var currentRoles = await _userManager.GetRolesAsync(user);
+
+        // No convertir una identidad con otro rol en paciente.
+        if (currentRoles.Any(role =>
+            !string.Equals(
+                role,
+                Roles.Patient,
+                StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new AuthenticationException();
+        }
 
         var hasPatientRole = currentRoles.Contains(
             Roles.Patient,
             StringComparer.OrdinalIgnoreCase);
-
-        if (currentRoles.Count > 0 && !hasPatientRole)
-        {
-            await CompensatePatientIdentity(
-                user,
-                userCreated,
-                roleAdded);
-
-            throw new AuthenticationException();
-        }
 
         if (!hasPatientRole)
         {
@@ -191,74 +247,23 @@ public class AuthenticationService : IAuthenticationService
 
             if (!roleResult.Succeeded)
             {
-                await CompensatePatientIdentity(
-                    user,
-                    userCreated,
-                    roleAdded);
-
                 throw new InvalidOperationException(
                     "No se pudo asignar el rol del paciente.");
             }
-
-            roleAdded = true;
         }
 
         if (patientByUser is null)
         {
-            try
-            {
-                var patient = new Patient(
-                    user.Id,
-                    request.Dni);
-
-                await _persistence.Add(patient);
-            }
-            catch
-            {
-                await CompensatePatientIdentity(
-                    user,
-                    userCreated,
-                    roleAdded);
-
-                throw;
-            }
+            await _persistence.Add(
+                new Patient(user.Id, request.Dni));
         }
 
-        var token = _jwtService.GenerateToken(
-            user,
-            Roles.Patient);
-
-        _logger.LogInformation(
-            "Login de paciente exitoso para el usuario {UserId}.",
-            user.Id);
+        // Generar el token antes de confirmar permite revertir también
+        // el alta si existe un error de configuración al emitirlo.
+        var token = _jwtService.GenerateToken(user, Roles.Patient);
 
         return new LoginPatientModel.Response(
             token,
             Roles.Patient.ToUpperInvariant());
-    }
-    private async Task CompensatePatientIdentity(
-    ApplicationUser user,
-    bool userCreated,
-    bool roleAdded)
-    {
-        IdentityResult? compensationResult = null;
-
-        if (userCreated)
-        {
-            compensationResult = await _userManager.DeleteAsync(user);
-        }
-        else if (roleAdded)
-        {
-            compensationResult = await _userManager.RemoveFromRoleAsync(
-                user,
-                Roles.Patient);
-        }
-
-        if (compensationResult is not null &&
-            !compensationResult.Succeeded)
-        {
-            _logger.LogCritical(
-                "No se pudo compensar una identidad de paciente incompleta.");
-        }
     }
 }

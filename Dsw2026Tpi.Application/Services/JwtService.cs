@@ -1,24 +1,31 @@
-﻿using Dsw2026Tpi.Data.Identity;
-using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
+﻿using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Dsw2026Tpi.Application.Options;
+using Dsw2026Tpi.Data.Identity;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Dsw2026Tpi.Application.Services;
 
 public class JwtService
 {
-    private readonly IConfiguration _config;
+    private readonly JwtOptions _options;
+    private readonly TimeProvider _timeProvider;
 
-    public JwtService(IConfiguration config)
+    public JwtService(
+        IOptions<JwtOptions> options,
+        TimeProvider timeProvider)
     {
-        _config = config;
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(timeProvider);
+
+        _options = options.Value;
+        _timeProvider = timeProvider;
     }
 
-    public string GenerateToken(
-        ApplicationUser user,
-        string role)
+    public string GenerateToken(ApplicationUser user, string role)
     {
         ArgumentNullException.ThrowIfNull(user);
 
@@ -31,64 +38,43 @@ public class JwtService
 
         ArgumentException.ThrowIfNullOrWhiteSpace(role);
 
-        var jwtConfig = _config.GetSection("Jwt");
-
-        var keyText = jwtConfig["Key"] ??
-            throw new ArgumentNullException("Jwt Key");
-
-        var issuer = jwtConfig["Issuer"] ??
-            throw new ArgumentNullException("Jwt Issuer");
-
-        var audience = jwtConfig["Audience"] ??
-            throw new ArgumentNullException("Jwt Audience");
-
-        var expiresIn = int.Parse(
-            jwtConfig["ExpiresInMinutes"] ?? "60");
-
-        var email = user.Email ?? user.UserName ??
-            throw new InvalidOperationException(
+        var email = user.Email ?? user.UserName
+            ?? throw new InvalidOperationException(
                 "El usuario no tiene un email configurado.");
 
+        var now = _timeProvider.GetUtcNow();
         var userId = user.Id.ToString();
 
         var claims = new[]
         {
-            new Claim(
-                JwtRegisteredClaimNames.Sub,
-                userId),
-
-            new Claim(
-                ClaimTypes.NameIdentifier,
-                userId),
-
-            new Claim(
-                ClaimTypes.Name,
-                email),
-
-            new Claim(
-                ClaimTypes.Role,
-                role),
-
+            new Claim(JwtRegisteredClaimNames.Sub, userId),
+            new Claim(ClaimTypes.NameIdentifier, userId),
+            new Claim(ClaimTypes.Name, email),
+            new Claim(ClaimTypes.Role, role),
             new Claim(
                 JwtRegisteredClaimNames.Jti,
-                Guid.NewGuid().ToString())
+                Guid.NewGuid().ToString()),
+            new Claim(
+                JwtRegisteredClaimNames.Iat,
+                now.ToUnixTimeSeconds().ToString(
+                    CultureInfo.InvariantCulture),
+                ClaimValueTypes.Integer64)
         };
 
-        var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(keyText));
-
         var credentials = new SigningCredentials(
-            key,
+            new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(_options.Key)),
             SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
-            issuer: issuer,
-            audience: audience,
+            issuer: _options.Issuer,
+            audience: _options.Audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(expiresIn),
+            notBefore: now.UtcDateTime,
+            expires: now.AddMinutes(
+                _options.ExpiresInMinutes).UtcDateTime,
             signingCredentials: credentials);
 
-        return new JwtSecurityTokenHandler()
-            .WriteToken(token);
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

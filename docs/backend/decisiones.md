@@ -34,15 +34,11 @@ No actualizar paquetes ni herramientas como parte del PR documental G01.
 
 Los cambios se realizan en ramas por tarea, con PR hacia development.
 
-Por decisión de Emilio del 2026-10-07, G01 y G02 se desarrollan
-en la rama docs/emilio-contratos-cierre y se entregan en un único PR
-hacia development.
+G01 y G02 se integraron conjuntamente en development mediante
+el PR #21, SHA de merge 11cd043.
 
-Esta decisión reemplaza la integración separada originalmente prevista.
-Los demás integrantes comienzan las tareas dependientes cuando el PR
-conjunto esté integrado.
-
-G02 proporciona la base compartida que necesitan los demás integrantes.
+Esta decisión reemplazó la integración separada originalmente prevista.
+La base compartida está disponible para las tareas dependientes.
 
 Una dependencia solo se considera disponible cuando está integrada
 en development. Un PR abierto no es suficiente.
@@ -100,7 +96,9 @@ Identificadores previstos para resolver la zona:
 - IANA: America/Argentina/Buenos_Aires.
 - Windows: Argentina Standard Time.
 
-G02 verificará su resolución en el sistema donde se ejecute.
+Las pruebas de G02 verificaron ambos identificadores en el entorno
+Windows de Emilio. La disponibilidad de la zona debe comprobarse
+también al preparar otros entornos de ejecución.
 No se usará la zona del host como sustitución silenciosa.
 
 ## D06 — URLs locales y CORS
@@ -155,21 +153,19 @@ DbContext scoped utilizado por los repositorios.
 Las mutaciones de catálogos, reglas, slots y citas adquirirán
 la misma clave de bloqueo: tpi:clinical-write.
 
-La implementación utiliza sp_getapplock en SQL Server; su validación SQL está pendiente de C01:
-- Modo Exclusive.
-- Propietario Transaction.
-- Recurso y timeout parametrizados.
-- Código de retorno comprobado.
+La implementación utiliza sp_getapplock en SQL Server.
+C01 verificó confirmación, rollback y timeout entre conexiones
+independientes mediante el PR #22, SHA de merge 1645370.
+
+Las verificaciones de concurrencia entre módulos se completan
+en sus tareas correspondientes y en C04.
 
 El alcance se inicia antes de las lecturas decisorias.
 Solo CompleteAsync confirma; Dispose sin completar revierte.
 
 Se conservan rowversion e índices únicos como defensas adicionales.
-Un bloqueo únicamente en memoria no acredita coordinación
-entre procesos.
 
-Esta serialización conservadora simplifica la consistencia
-del cierre académico. C04 medirá su efecto sobre el rendimiento.
+C04 medirá el efecto de la serialización compartida sobre el rendimiento.
 
 ## D10 — Bajas, relaciones y estados
 
@@ -193,8 +189,20 @@ combinaciones incompatibles de identidad.
 La revocación JWT tiene alcance local, en una instancia.
 No se garantiza persistencia tras reinicios ni distribución.
 
-E01 verificará el ciclo login, acceso, logout y rechazo del token,
-además del contrato HTTP efectivo de logout.
+La implementación local de E01 verificó login, acceso, logout,
+rechazo del token revocado y expiración efectiva por HTTP.
+
+Logout devuelve HTTP 200, text/plain y cuerpo literal ok.
+La validación JWT utiliza ClockSkew igual a cero.
+
+Identity y pacientes comparten conexión y transacción durante
+el login del paciente, bajo el bloqueo SQL común de G02.
+
+InitialAdmin:Email e InitialAdmin:Password deben permanecer
+configurados. Una configuración incompleta impide iniciar la API.
+
+La evidencia y el estado de integración se registran en
+evidencia-autenticacion.md y seguimiento.md.
 
 Los secretos se configuran localmente y no se incorporan a Git.
 
@@ -264,11 +272,8 @@ decorativos del mockup.
 
 | Punto | Responsable | Momento |
 |---|---|---|
-| Revisar contratos e interfaces con el equipo | Emilio coordina | Antes de integrar G01 |
-| Verificar resolución de zona horaria y opciones del alcance | Emilio | G02 |
-| Documentar instancia y configuración segura de pruebas SQL | Charly | C01 |
+| Confirmar y registrar la revisión de contratos e interfaces por el equipo | Emilio coordina | Coordinación de los módulos |
 | Fijar representación normalizada de day en respuestas | Nacho, coordinado con Emilio | Antes de integrar N02 |
 | Documentar respuesta ante reserva de un slot retirado | Lucas, coordinado con Nacho | L02 |
-| Verificar cuerpo y Content-Type de logout por HTTP | Emilio | E01 |
 | Verificar calendario operativo y responsable de actualización | Emilio coordina | E02 y aceptación C04 |
 | Documentar condiciones y resultados de rendimiento | Charly | C04 |
