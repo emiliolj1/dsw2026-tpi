@@ -8,6 +8,14 @@ namespace Dsw2026Tpi.Domain.Interfaces
 
         Task AddRange(IReadOnlyCollection<Availability> availabilities);
 
+        Task<IReadOnlyCollection<AvailabilityRule>> GetRulesByDoctorAndMonth(
+    Guid doctorId,
+    int year,
+    int month);
+
+        Task AddRules(
+            IReadOnlyCollection<AvailabilityRule> rules);
+
         Task ReplaceFutureUnbooked(
             Guid doctorId,
             DateOnly fromInclusive,

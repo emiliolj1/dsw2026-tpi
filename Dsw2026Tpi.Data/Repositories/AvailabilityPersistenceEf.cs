@@ -100,5 +100,46 @@ namespace Dsw2026Tpi.Data.Repositories
                 throw;
             }
         }
+
+
+        public async Task<IReadOnlyCollection<AvailabilityRule>>
+            GetRulesByDoctorAndMonth(
+                Guid doctorId,
+                int year,
+                int month)
+        {
+            return await _context.Set<AvailabilityRule>()
+                .AsNoTracking()
+                .Where(rule =>
+                    !rule.Deleted &&
+                    rule.DoctorId == doctorId &&
+                    rule.Year == year &&
+                    rule.Month == month)
+                .OrderBy(rule => rule.DayOfWeek)
+                .ThenBy(rule => rule.StartTime)
+                .ToListAsync();
+        }
+
+        public async Task AddRules(
+            IReadOnlyCollection<AvailabilityRule> rules)
+        {
+            if (rules.Count == 0)
+                return;
+
+            var now = DateTime.UtcNow;
+
+            foreach (var rule in rules)
+            {
+                rule.CreatedAt = now;
+                rule.UpdatedAt = now;
+                rule.Deleted = false;
+            }
+
+            await _context.Set<AvailabilityRule>()
+                .AddRangeAsync(rules);
+
+            await _context.SaveChangesAsync();
+        }
+
     }
 }
