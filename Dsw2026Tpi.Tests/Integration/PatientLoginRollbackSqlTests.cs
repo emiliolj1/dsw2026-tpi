@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using System.Text.Json;
 
 namespace Dsw2026Tpi.Tests.Integration;
 
@@ -54,6 +55,24 @@ public sealed class PatientLoginRollbackSqlTests
             Assert.Equal(
                 HttpStatusCode.InternalServerError,
                 response.StatusCode);
+
+            Assert.Equal(
+                "application/json",
+                response.Content.Headers.ContentType?.MediaType);
+
+            var error = await response.Content
+                .ReadFromJsonAsync<JsonElement>();
+
+            Assert.Equal(
+                "UNHANDLED_ERROR",
+                error.GetProperty("errorCode").GetString());
+
+            Assert.False(string.IsNullOrWhiteSpace(
+                error.GetProperty("message").GetString()));
+
+            Assert.DoesNotContain(
+                "Fallo artificial",
+                error.GetRawText());
         }
 
         Assert.Equal(before, await ReadCounts());

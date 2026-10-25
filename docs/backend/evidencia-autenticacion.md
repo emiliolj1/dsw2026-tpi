@@ -10,7 +10,9 @@
 - Entorno: Windows y Git Bash.
 - Motor utilizado: SQL Server LocalDB, instancia MSSQLLocalDB.
 - Infraestructura: C01, con bases exclusivas de pruebas.
-- Estado: implementación local verificada; pendiente de PR e integración.
+- Estado: integrada en development mediante PR #27.
+- SHA de merge: a9d3930ef23846c1b9f761165e116f65b8f41551.
+- Fecha de integración: 2026-10-24.
 
 ## Cambios
 
@@ -90,8 +92,15 @@ y no se distribuye entre procesos.
 
 No se modificaron esquemas, migraciones ni snapshots.
 
-Durante el trabajo se reportaron ocho advertencias de compilación.
-Su detalle y clasificación local siguen pendientes de registrar.
+Durante E01 se reportaron ocho advertencias NU1902/NU1903 asociadas a
+System.Security.Cryptography.Pkcs 9.0.4, repetidas en los proyectos
+dependientes. Esa observación se conserva como evidencia histórica.
+
+La corrección local de E02 fija Pkcs 9.0.21 en Data.
+La compilación final de E02 no reportó esas advertencias y las consultas
+de Data y Tests no listaron vulnerabilidades conocidas el 2026-10-25.
+Ver [evidencia-api-transversal.md](evidencia-api-transversal.md).
+La corrección de dependencias está pendiente de integrar con E02.
 
 La aprobación de estas pruebas no sustituye la aceptación global C04
 ni declara terminado el backend.

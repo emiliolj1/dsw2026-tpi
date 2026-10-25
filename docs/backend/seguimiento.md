@@ -13,11 +13,17 @@
 - Paquetes EF Core consultados en Data y Tests: 10.0.9.
 - Herramienta CLI dotnet-ef inicial: 10.0.9.
 
-Última integración verificada por Charly:
-- Fecha: 2026-10-15.
-- Commit de development: 1645370.
-- G01 y G02 integrados mediante PR #21, SHA de merge 11cd043.
-- C01 integrado mediante PR #22, SHA de merge 1645370.
+Última verificación de integraciones: 2026-10-25.
+- Commit remoto de development: a9d3930ef23846c1b9f761165e116f65b8f41551.
+- G01 y G02: PR #21, SHA de merge 11cd043.
+- C01: PR #22, SHA de merge 1645370.
+- C02: PR #24, SHA de merge 11cc6fe.
+- C03: PR #25, SHA de merge a39cfab.
+- L01: código integrado por PR #26, SHA de merge 82e2f0e;
+  evidencia de ejecución específica pendiente de registrar.
+- E01: PR #27, SHA de merge a9d3930.
+- E02: verificada localmente en fix/emilio-api-transversal;
+  todavía sin PR ni SHA integrado.
 
 ## Evidencia inicial
 
@@ -54,12 +60,12 @@ en development.
 | C01 | Charly | G02 | Integrada | test/charly-sqlserver-base | #22 | 1645370 | 77 pruebas no SQL y 5 SQL aprobadas, sin fallidas ni omitidas; docs/backend/pruebas-sql.md |
 | C02 | Charly | G02 | Integrada | feature/charly-catalogos-v17 | #24 | 11cc6fe | 87 pruebas no SQL y 7 SQL aprobadas; evidencia en la sección C02 |
 | N01 | Nacho | G02 | Pendiente | - | - | - | - |
-| L01 | Lucas | G02 | Pendiente | - | - | - | - |
-| E01 | Emilio | G02, C01 | Implementada localmente; pendiente de PR | fix/emilio-autenticacion-cierre | - | - | 112 pruebas no SQL y 46 SQL aprobadas; docs/backend/evidencia-autenticacion.md |
-| C03 | Charly | C01, C02 | Implementada localmente; pendiente de PR | fix/charly-bajas-relacionadas | - | - | 93 pruebas no SQL y 26 SQL aprobadas; concurrencia con reservas pendiente para C04 |
+| L01 | Lucas | G02 | Código integrado; evidencia de ejecución pendiente | feature/lucas-contratos-citas | #26 | 82e2f0e | PR fusionado; no se atribuyen resultados no registrados |
+| E01 | Emilio | G02, C01 | Integrada | fix/emilio-autenticacion-cierre | #27 | a9d3930 | 112 pruebas no SQL y 46 SQL aprobadas; docs/backend/evidencia-autenticacion.md |
+| C03 | Charly | C01, C02 | Integrada | fix/charly-bajas-relacionadas | #25 | a39cfab | 93 pruebas no SQL y 26 SQL aprobadas; concurrencia con reservas pendiente para C04 |
 | N02 | Nacho | N01 | Pendiente | - | - | - | - |
 | L02 | Lucas | L01, C01, N01 | Pendiente | - | - | - | - |
-| E02 | Emilio | G02, C01, E01 | Pendiente | fix/emilio-api-transversal | - | - | - |
+| E02 | Emilio | G02, C01, E01 | Implementada y verificada localmente; pendiente de PR | fix/emilio-api-transversal | - | - | 116 pruebas no SQL y 62 SQL aprobadas; navegador y dependencias verificados; evidencia-api-transversal.md |
 | N03 | Nacho | N02, C01, L02 | Pendiente | - | - | - | - |
 | L03 | Lucas | L02 | Pendiente | - | - | - | - |
 | N04 | Nacho | N03, E01, L03 | Pendiente | - | - | - | - |
@@ -219,7 +225,6 @@ Para consumir los catálogos:
 
 Sin cambios de esquema, migraciones ni acción GetMonthlyPlanning.
 Las políticas de bajas relacionadas y su atomicidad corresponden a C03.
-Registrar PR y SHA de merge después de integrar.
 
 ## C03 — Bajas y relaciones de catálogos
 
@@ -227,7 +232,8 @@ Responsable: Charly.
 Fecha de verificación local: 2026-10-16.
 Rama: fix/charly-bajas-relacionadas.
 Base de trabajo: 11cc6fe.
-Estado: implementada localmente; pendiente de PR, revisión e integración.
+Estado: integrada mediante PR #25.
+SHA de merge en development: a39cfab4f69c38eed45e2b254f2cf1be44d67c76.
 
 Cambios:
 - Altas, modificaciones y bajas de médicos y especialidades utilizan
@@ -279,14 +285,53 @@ Pendiente de integración cruzada:
 
 Sin nuevas migraciones ni modificaciones de los módulos de agenda
 y citas. No se cambió GetMonthlyPlanning.
-Registrar PR y SHA de merge después de integrar.
+
+## L01 — Contratos de citas
+
+- Responsable: Lucas.
+- Rama: feature/lucas-contratos-citas.
+- PR integrado: #26.
+- SHA de merge: 82e2f0e40f584b9b035cab625cc4be6901fd949e.
+- La integración del código fue comprobada en GitHub.
+- Falta registrar la evidencia de ejecución específica de Lucas.
+- No se presenta esa evidencia pendiente como una prueba aprobada.
+- L02 mantiene su dependencia de N01, todavía pendiente.
+
+## E01 — Cierre de autenticación
+
+- Responsable: Emilio.
+- PR integrado: #27.
+- SHA de merge: a9d3930ef23846c1b9f761165e116f65b8f41551.
+- Evidencia histórica: 112 pruebas no SQL y 46 SQL aprobadas.
+- Detalle: [evidencia-autenticacion.md](evidencia-autenticacion.md).
+
+## E02 — API transversal
+
+- Responsable: Emilio.
+- Fecha de verificación local: 2026-10-25.
+- Rama: fix/emilio-api-transversal.
+- Base: a9d3930ef23846c1b9f761165e116f65b8f41551.
+- Estado: implementación local verificada; pendiente de PR e integración.
+- Regresión no SQL: 116 aprobadas, 0 fallidas, 0 omitidas.
+- Regresión SQL: 62 aprobadas, 0 fallidas, 0 omitidas.
+- Compilación final sin advertencias reportadas.
+- CORS verificado por HTTP y en navegador, con JWT real.
+- Swagger accesible y migraciones existentes aplicadas en PC02.
+- Data y Tests no reportaron vulnerabilidades conocidas al consultar
+  dependencias directas y transitivas el 2026-10-25.
+- Detalle: [evidencia-api-transversal.md](evidencia-api-transversal.md).
+- Calendario acordado: [calendario-operativo.md](calendario-operativo.md).
+- C04 sigue dependiendo de la integración de E02, N04 y L04,
+  además de E01 y C03 ya integradas.
 
 ## Pendientes transversales conocidos
 
-- Advertencias NU1902 y NU1903 relacionadas con
-  System.Security.Cryptography.Pkcs 9.0.4, reportadas en la ejecución
-  de Charly. Coordinar su resolución con Emilio durante el cierre
-  de dependencias.
+- Las advertencias NU1902/NU1903 de Pkcs 9.0.4 se resolvieron
+  localmente en E02 fijando Pkcs 9.0.21. La corrección aún debe
+  integrarse mediante el PR de E02.
+- Confirmar cierres adicionales del centro y su aplicación a la agenda
+  en N02 y C04; actualizar el calendario antes de operar en 2027.
+- Registrar la evidencia específica pendiente de L01.
 - Mantener actualizados PR, SHA y evidencias al integrar cada tarea.
 - No presentar pruebas omitidas o no ejecutadas como aprobadas.
 - Conservar los datos existentes y utilizar bases exclusivas de pruebas.

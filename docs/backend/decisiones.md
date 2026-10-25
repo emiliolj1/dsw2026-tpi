@@ -1,6 +1,7 @@
 # Decisiones del cierre del backend
 
-Fecha de registro: 2026-10-07.
+Fecha de registro inicial: 2026-10-07.
+Actualización documental de E02: 2026-10-25.
 Rama de integración: development.
 Responsable de coordinación: Emilio.
 
@@ -17,8 +18,9 @@ y SQL Server, con la arquitectura en capas existente.
 El entorno local de referencia es Windows con SQL Server LocalDB.
 El frontend posterior utilizará React.
 
-SDK verificado en el equipo de Emilio: 10.0.302.
-Runtime observado durante las pruebas: .NET 10.0.10.
+SDK inicial verificado en el equipo de Emilio: 10.0.302.
+Runtime observado en las pruebas iniciales: .NET 10.0.10.
+SDK informado en PC02 para el trabajo de E01/E02: 10.0.401.
 Versiones verificadas mediante consulta local:
 - Microsoft.AspNetCore.Identity.EntityFrameworkCore: 10.0.9.
 - Microsoft.EntityFrameworkCore.SqlServer: 10.0.9.
@@ -28,7 +30,12 @@ Versiones verificadas mediante consulta local:
 
 Las versiones solicitadas y resueltas de estos paquetes coinciden.
 
-No actualizar paquetes ni herramientas como parte del PR documental G01.
+La restricción de no actualizar paquetes correspondió al PR documental G01.
+En E02 se agregó una referencia explícita a System.Security.Cryptography.Pkcs
+9.0.21 en Data para corregir las alertas de la dependencia transitiva 9.0.4.
+Se conservan EF Core 10.0.9 y Microsoft.Data.SqlClient 6.1.1.
+La evidencia y las consultas de vulnerabilidades están en
+evidencia-api-transversal.md; la corrección aún no está integrada.
 
 ## D02 — Ramas y dependencias
 
@@ -50,20 +57,22 @@ y evidencia en seguimiento.md.
 
 Se conservan los datos existentes.
 
-Las pruebas SQL utilizarán bases nuevas, exclusivas de pruebas,
+C01 está integrada mediante PR #22, SHA de merge 1645370.
+Las pruebas SQL utilizan bases nuevas y exclusivas,
 separadas de la base de desarrollo.
 
-Convención propuesta para C01:
-Dsw2026Tpi_Tests_<identificador_unico>.
+Configuración: variable DSW2026_TEST_SQL_CONNECTION.
+Dsw2026Tpi_Test_Config es el catálogo de configuración;
+cada fixture genera Dsw2026Tpi_Test_<GUID>.
 
-Charly implementará la creación, aislamiento y limpieza segura
-de esas bases en C01 y documentará su configuración.
+La creación, aislamiento y limpieza segura se documentan en
+[pruebas-sql.md](pruebas-sql.md).
+Se verificó la instancia LocalDB MSSQLLocalDB en Windows.
+La limpieza valida el prefijo y el GUID del catálogo generado,
+y rechaza conexiones arbitrarias y archivos adjuntos.
 
 La fábrica no debe ejecutar limpieza destructiva sobre una base
-de desarrollo ni sobre una conexión arbitraria.
-
-La instancia y configuración efectiva de pruebas se verificarán
-durante C01. Esta decisión no declara creada ninguna base.
+de desarrollo.
 
 Las pruebas de migración con datos se realizarán sobre una copia
 o un dataset de prueba reproducible.
@@ -103,12 +112,23 @@ No se usará la zona del host como sustitución silenciosa.
 
 ## D06 — URLs locales y CORS
 
-Valores previstos:
+Valores locales configurados para E02:
 - API: http://localhost:5278.
 - Frontend React: http://localhost:5173.
 
-E02 configurará y probará el origen explícito del frontend,
-incluyendo las solicitudes preflight necesarias.
+Cors:AllowedOrigins debe contener orígenes HTTP/HTTPS explícitos.
+Una lista vacía o con valores inválidos impide el arranque.
+No se admiten comodines, credenciales, rutas, consultas ni fragmentos.
+
+E02 verificó localmente preflight con Authorization y Content-Type,
+y solicitudes autenticadas desde navegador.
+El origen 5173 permitió leer HTTP 200 del health-check.
+El origen 5174 fue bloqueado por el navegador durante el preflight,
+sin Access-Control-Allow-Origin.
+
+Ese bloqueo del navegador no se documenta como un HTTP 403 de la API.
+Las pruebas SQL verificaron además los headers y el HTTP 204 de OPTIONS.
+E02 continúa pendiente de PR e integración.
 
 Si cambian los puertos, deben actualizarse configuración,
 contrato y documentación.
@@ -144,6 +164,18 @@ Las fechas artificiales usadas en tests no se trasladan
 automáticamente a la configuración operativa.
 
 E02 coordina la configuración y N02 verifica su aplicación a la agenda.
+
+Para E02 se acordó una base de feriados nacionales de Argentina de 2026,
+con 17 fechas y revisión de fuentes oficiales al 2026-10-25.
+Emilio coordina su actualización.
+El alcance, las fuentes y las fechas están en
+[calendario-operativo.md](calendario-operativo.md).
+
+No se incluyen automáticamente días turísticos ni cierres provinciales,
+municipales o propios del centro. Esos cierres requieren confirmación.
+Antes de operar en 2027 debe actualizarse el calendario.
+La regresión de E02 no acredita por sí sola la exclusión de esas fechas
+en la nueva planificación mensual de N02.
 
 ## D09 — Escrituras clínicas y concurrencia
 
@@ -189,7 +221,8 @@ combinaciones incompatibles de identidad.
 La revocación JWT tiene alcance local, en una instancia.
 No se garantiza persistencia tras reinicios ni distribución.
 
-La implementación local de E01 verificó login, acceso, logout,
+E01 está integrada mediante PR #27, SHA de merge a9d3930.
+Sus pruebas verificaron login, acceso, logout,
 rechazo del token revocado y expiración efectiva por HTTP.
 
 Logout devuelve HTTP 200, text/plain y cuerpo literal ok.
@@ -275,5 +308,6 @@ decorativos del mockup.
 | Confirmar y registrar la revisión de contratos e interfaces por el equipo | Emilio coordina | Coordinación de los módulos |
 | Fijar representación normalizada de day en respuestas | Nacho, coordinado con Emilio | Antes de integrar N02 |
 | Documentar respuesta ante reserva de un slot retirado | Lucas, coordinado con Nacho | L02 |
-| Verificar calendario operativo y responsable de actualización | Emilio coordina | E02 y aceptación C04 |
+| Confirmar cierres adicionales del centro y comprobar su aplicación a la agenda | Emilio coordina con Nacho | N02 y aceptación C04 |
+| Actualizar feriados y revisar nuevas disposiciones para el siguiente año | Emilio coordina | Antes de operar en 2027 |
 | Documentar condiciones y resultados de rendimiento | Charly | C04 |
