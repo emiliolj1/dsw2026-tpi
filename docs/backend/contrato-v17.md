@@ -19,8 +19,8 @@ Publicar este contrato no equivale a completar las tareas de código.
 
 ## 2. Convenciones generales
 
-- URL local prevista de la API: http://localhost:5278.
-- Origen local previsto del frontend: http://localhost:5173.
+- URL local de la API: http://localhost:5278.
+- Origen local del frontend: http://localhost:5173.
 - Identificadores de entidades: GUID.
 - JSON público en camelCase.
 - Fechas operativas: YYYY-MM-DD.
@@ -461,7 +461,7 @@ POST /api/auth/logout
 - Otros tokens del usuario permanecen válidos.
 
 Este comportamiento fue verificado por HTTP con SQL Server real
-en la implementación local de E01.
+en E01, integrada mediante PR #27, SHA de merge a9d3930.
 
 La validación JWT utiliza ClockSkew igual a cero.
 La revocación cubre la vigencia del token hasta su expiración.
@@ -491,7 +491,9 @@ Formato:
 
 errorCode y message son obligatorios.
 details es opcional.
-Los códigos específicos se centralizan en la capa transversal.
+Los errores de dominio conservan sus códigos de la capa transversal.
+Los errores HTTP sin cuerpo se normalizan en
+HttpErrorConfigurationExtensions.
 
 | HTTP | Significado |
 |---|---|
@@ -504,6 +506,30 @@ Los códigos específicos se centralizan en la capa transversal.
 | 415 | Tipo de contenido no admitido |
 | 429 | Límite de solicitudes excedido |
 | 500 | Error interno no previsto |
+
+Códigos normalizados por E02:
+
+| HTTP | errorCode |
+|---|---|
+| 400 | VALIDATION_ERROR |
+| 401 | AUTHENTICATION_FAILED |
+| 403 | AUTHORIZATION_FAILED |
+| 404 de una entidad | ENTITY_NOTFOUND |
+| 404 de una ruta inexistente | ROUTE_NOT_FOUND |
+| 405 | METHOD_NOT_ALLOWED |
+| 409 sin cuerpo específico | CONFLICT |
+| 415 | UNSUPPORTED_MEDIA_TYPE |
+| 429 | RATE_LIMIT_EXCEEDED |
+| 500 no previsto | UNHANDLED_ERROR |
+
+Los conflictos de negocio conservan sus códigos específicos, por ejemplo
+SPECIALTY_IN_USE y DOCTOR_HAS_FUTURE_APPOINTMENTS.
+Para otros errores HTTP sin cuerpo se utiliza HTTP_ERROR.
+
+La normalización por status code completa respuestas de error sin cuerpo;
+no reemplaza errores de negocio que ya tienen una respuesta.
+Una respuesta que ya comenzó no se limpia ni se reescribe.
+La cancelación del cliente no se transforma en un error 500 artificial.
 
 No convertir indiscriminadamente errores de conexión o implementación en 409.
 No devolver secretos, tokens ni trazas internas en las respuestas.
@@ -524,13 +550,23 @@ Ventanas de 60 segundos y cola de espera cero:
 | General para restantes endpoints | 100 | Usuario o IP |
 
 Los valores se obtienen de configuración.
-Los rechazos devuelven 429 con el formato común y se registran en logs.
+Los rechazos devuelven 429 con errorCode RATE_LIMIT_EXCEEDED y el formato
+común. Se registran ruta, partición y TraceId.
+
+E02 verificó aislamiento por IP para ambos logins y para el acceso anónimo,
+y por usuario autenticado para reservas y acceso general.
+La sustitución de IP mediante un header existe únicamente en el host de
+pruebas; no configura confianza en headers enviados a la API real.
+
+Los logs del middleware de excepciones incluyen método, ruta sin query,
+tipo de excepción y TraceId. No registran el mensaje crudo de la excepción,
+el cuerpo de la solicitud ni el JWT.
 
 ## 15. Base técnica compartida
 
 G02 incorpora las siguientes interfaces y sus implementaciones.
-Su disponibilidad para el equipo depende de integrar el PR conjunto
-G01 + G02 en development.
+Están integradas en development mediante el PR conjunto G01 + G02,
+PR #21, SHA de merge 11cd043.
 
 ### Reloj del centro
 
@@ -725,3 +761,24 @@ del día filtradas por BOOKED.
 
 Todo cambio posterior de este contrato debe coordinarse con los
 responsables afectados y registrarse antes de depender de él.
+
+## 17. CORS y calendario operativo
+
+Cors:AllowedOrigins contiene el origen explícito http://localhost:5173.
+La política admite los métodos y headers necesarios, incluidos
+Authorization y Content-Type. No utiliza AllowAnyOrigin.
+Una configuración vacía o inválida impide el arranque.
+
+Un origen no autorizado no recibe Access-Control-Allow-Origin.
+El navegador impide leer o completar la solicitud según corresponda;
+ese resultado no implica una respuesta HTTP 403 de la API.
+
+NonWorkingDays:Dates utiliza fechas yyyy-MM-dd.
+La base acordada para E02 cubre feriados nacionales de Argentina de 2026.
+Las fechas, fuentes, responsable y cierres adicionales pendientes se
+documentan en [calendario-operativo.md](calendario-operativo.md).
+N02 debe verificar su aplicación a la planificación mensual.
+
+La evidencia de E02 se encuentra en
+[evidencia-api-transversal.md](evidencia-api-transversal.md).
+Su verificación local no equivale a integración ni a aceptación C04.

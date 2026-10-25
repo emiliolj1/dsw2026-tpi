@@ -68,9 +68,11 @@ public static class RateLimitingConfigurationExtensions
 
                     logger.LogWarning(
                         "Solicitud rechazada por rate limiting. " +
-                        "Ruta: {Path}. Partición: {PartitionKey}",
+                        "Ruta: {Path}. Partición: {PartitionKey}. " +
+                        "TraceId: {TraceId}",
                         httpContext.Request.Path.Value,
-                        partitionKey);
+                        partitionKey,
+                        httpContext.TraceIdentifier);
 
                     httpContext.Response.StatusCode =
                         StatusCodes.Status429TooManyRequests;

@@ -1,7 +1,6 @@
 ﻿using Dsw2026Tpi.CrossCutting.Exceptions;
 using Dsw2026Tpi.CrossCutting.Models;
 using Dsw2026Tpi.CrossCutting.Resources;
-using System.Net;
 
 namespace Dsw2026Tpi.Api.Middlewares;
 
@@ -10,7 +9,9 @@ public class ExceptionHandlingMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<ExceptionHandlingMiddleware> _logger;
 
-    public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
+    public ExceptionHandlingMiddleware(
+        RequestDelegate next,
+        ILogger<ExceptionHandlingMiddleware> logger)
     {
         _next = next;
         _logger = logger;
@@ -22,31 +23,64 @@ public class ExceptionHandlingMiddleware
         {
             await _next(context);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException)
+            when (context.RequestAborted.IsCancellationRequested)
         {
-            _logger.LogError(ex, "Se produjo un error durante el procesamiento de la solicitud");
-            await HandleExceptionAsync(context, ex);
+            throw;
         }
-    }
-
-    private async Task HandleExceptionAsync(HttpContext context, Exception ex)
-    {
-        ErrorResponse error = ex is AppException exApp ? 
-            exApp.Error : 
-            new ErrorResponse(nameof(ErrorCodes.UNHANDLED_ERROR), ErrorCodes.UNHANDLED_ERROR);
-        var status = ex switch
+        catch (Exception exception)
         {
-            ValidationException => HttpStatusCode.BadRequest,
-            EntityNotFoundException => HttpStatusCode.NotFound,
-            ConflictException => HttpStatusCode.Conflict,
-            AuthenticationException => HttpStatusCode.Unauthorized,
-            AuthorizationException => HttpStatusCode.Forbidden,
-            _ => HttpStatusCode.InternalServerError,
-        };
-        context.Response.StatusCode = (int)status;
+            var level = exception is AppException
+                ? LogLevel.Warning
+                : LogLevel.Error;
 
-        await context.Response.WriteAsJsonAsync(
-            error,
-            context.RequestAborted);
+            // No registrar el mensaje o payload de la excepción:
+            // podrían contener datos personales o valores SQL.
+            _logger.Log(
+                level,
+                "Solicitud fallida. Método: {Method}. Ruta: {Path}. " +
+                "Tipo: {ExceptionType}. TraceId: {TraceId}.",
+                context.Request.Method,
+                context.Request.Path.Value,
+                exception.GetType().Name,
+                context.TraceIdentifier);
+
+            if (context.Response.HasStarted)
+            {
+                throw;
+            }
+
+            context.Response.Clear();
+
+            var error = exception is AppException applicationException
+                ? applicationException.Error
+                : new ErrorResponse(
+                    nameof(ErrorCodes.UNHANDLED_ERROR),
+                    ErrorCodes.UNHANDLED_ERROR);
+
+            context.Response.StatusCode = exception switch
+            {
+                ValidationException =>
+                    StatusCodes.Status400BadRequest,
+
+                EntityNotFoundException =>
+                    StatusCodes.Status404NotFound,
+
+                ConflictException =>
+                    StatusCodes.Status409Conflict,
+
+                AuthenticationException =>
+                    StatusCodes.Status401Unauthorized,
+
+                AuthorizationException =>
+                    StatusCodes.Status403Forbidden,
+
+                _ => StatusCodes.Status500InternalServerError
+            };
+
+            await context.Response.WriteAsJsonAsync(
+                error,
+                context.RequestAborted);
+        }
     }
 }

@@ -145,9 +145,11 @@ Casos SQL verificados:
 También pasaron cinco casos sin conexión SQL que verifican el rechazo
 de catálogos ajenos, nombres únicos y rechazo de archivos adjuntos.
 
-La compilación informó ocho advertencias NU1902/NU1903 relacionadas
-con System.Security.Cryptography.Pkcs 9.0.4. Pendiente de coordinar
-con Emilio durante el cierre de dependencias.
+La compilación de C01 informó ocho advertencias NU1902/NU1903 relacionadas
+con System.Security.Cryptography.Pkcs 9.0.4. Se conserva este resultado
+histórico. Su corrección local se verificó el 2026-10-25 en E02,
+fijando Pkcs 9.0.21; continúa pendiente de integración.
+Ver [evidencia-api-transversal.md](evidencia-api-transversal.md).
 
 ## Límites y coordinación
 

@@ -110,36 +110,46 @@ public static class SecurityConfigurationExtensions
         return services;
     }
 
-    public static IServiceCollection AddAppCors(this IServiceCollection services, IConfiguration configuration)
-    {
-        //Obtener configuración para CORS desde appsettings.json
+    public static IServiceCollection AddAppCors( this IServiceCollection services, IConfiguration configuration){
         var allowedOrigins = configuration
-                            .GetSection("Cors:AllowedOrigins")
-                            .Get<string[]>()?
-                            .Where(origin => !string.IsNullOrWhiteSpace(origin))
-                            .Select(origin => origin.TrimEnd('/'))
-                            .Distinct(StringComparer.OrdinalIgnoreCase)
-                            .ToArray();
+            .GetSection("Cors:AllowedOrigins")
+            .Get<string[]>()
+            ?? [];
 
-        //Si no se definió configuración en el archivo, utilizar la que se define
-        if (allowedOrigins is null || allowedOrigins.Length == 0)
+        allowedOrigins = allowedOrigins
+            .Select(origin => origin?.Trim().TrimEnd('/') ?? string.Empty)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var invalidConfiguration =
+            allowedOrigins.Length == 0 ||
+            allowedOrigins.Any(origin =>
+                !Uri.TryCreate(origin, UriKind.Absolute, out var uri) ||
+                (uri.Scheme != Uri.UriSchemeHttp &&
+                 uri.Scheme != Uri.UriSchemeHttps) ||
+                string.IsNullOrEmpty(uri.Host) ||
+                uri.Host.Contains('*') ||
+                !string.IsNullOrEmpty(uri.UserInfo) ||
+                uri.AbsolutePath != "/" ||
+                !string.IsNullOrEmpty(uri.Query) ||
+                !string.IsNullOrEmpty(uri.Fragment));
+
+        if (invalidConfiguration)
         {
-            allowedOrigins =
-            [
-                "http://localhost",
-                "https://localhost"
-            ];
+            throw new InvalidOperationException(
+                "Cors:AllowedOrigins debe contener orígenes HTTP/HTTPS " +
+                "explícitos, sin comodines, credenciales, rutas, " +
+                "consultas ni fragmentos.");
         }
 
-        //Agregar CORS con la política por defecto a partir de las URLs definidas
         services.AddCors(options =>
         {
             options.AddDefaultPolicy(policy =>
             {
                 policy.WithOrigins(allowedOrigins)
-                     .AllowAnyHeader()
-                     .AllowAnyMethod()
-                     .AllowCredentials();
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials();
             });
         });
 

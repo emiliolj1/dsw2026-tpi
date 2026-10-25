@@ -38,6 +38,7 @@ public class Program
                 .AddControllers()
                 .ConfigureApiBehaviorOptions(options =>
                 {
+                    options.SuppressMapClientErrors = true;
                     options.InvalidModelStateResponseFactory = context =>
                     {
                         var error = new ErrorResponse(
@@ -84,6 +85,7 @@ public class Program
             }
 
             app.UseMiddleware<ExceptionHandlingMiddleware>();
+            app.UseAppStatusCodePages();
             app.UseCors();
             app.UseAuthentication();
             app.UseRateLimiter();
