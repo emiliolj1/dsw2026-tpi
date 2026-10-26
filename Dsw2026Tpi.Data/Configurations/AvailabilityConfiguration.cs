@@ -24,6 +24,15 @@ namespace Dsw2026Tpi.Data.Configurations
 
             builder.HasOne<Doctor>().WithMany().HasForeignKey(availability => availability.DoctorId).OnDelete(DeleteBehavior.Restrict);
 
+            builder.Property(a => a.AvailabilityRuleId)
+                .IsRequired(false);
+
+            builder.HasOne<AvailabilityRule>()
+                .WithMany()
+                .HasForeignKey(a => a.AvailabilityRuleId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+
             builder.HasIndex(availability => new
                 {
                     availability.DoctorId,

@@ -7,6 +7,8 @@ namespace Dsw2026Tpi.Domain.Entities
     public class Availability : EntityBase
     {
         public Guid DoctorId { get; private set; }
+
+        public Guid? AvailabilityRuleId { get; private set; }
         public DateOnly Date { get; private set; }
         public TimeOnly StartTime { get; private set; }
         public TimeOnly EndTime { get; private set; }
@@ -18,19 +20,34 @@ namespace Dsw2026Tpi.Domain.Entities
         private Availability()
         {
         }
-    #pragma warning restore CS8618
+#pragma warning restore CS8618
         #endregion
-        public Availability(Guid doctorId, DateOnly date, TimeOnly startTime, Guid? id = null) : base(id)
+
+        public Availability(
+            Guid doctorId,
+            DateOnly date,
+            TimeOnly startTime,
+            Guid? id = null,
+            Guid? availabilityRuleId = null) : base(id)
         {
             if (doctorId == Guid.Empty)
-                throw new ArgumentException("DoctorId cannot be empty.", nameof(doctorId));
+                throw new ArgumentException(
+                    "DoctorId cannot be empty.",
+                    nameof(doctorId));
+
+            if (availabilityRuleId == Guid.Empty)
+                throw new ArgumentException(
+                    "AvailabilityRuleId cannot be empty.",
+                    nameof(availabilityRuleId));
 
             DoctorId = doctorId;
+            AvailabilityRuleId = availabilityRuleId;
             Date = date;
             StartTime = startTime;
             EndTime = startTime.AddMinutes(30);
             Status = AvailabilityStatus.Available;
         }
+
 
         public void Book()
         {
