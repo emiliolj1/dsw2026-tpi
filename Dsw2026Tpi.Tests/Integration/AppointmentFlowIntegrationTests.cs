@@ -73,7 +73,7 @@ public sealed class AppointmentFlowIntegrationTests
         Assert.NotNull(initialSlots);
         Assert.Contains(
             initialSlots,
-            slot => slot.AvailabilityId == availability.Id);
+            slot => slot.AvailabilitySlotId == availability.Id);
 
         var appointmentRequest = new AppointmentModel.Request(
             doctor.Id,
@@ -106,7 +106,7 @@ public sealed class AppointmentFlowIntegrationTests
 
         var appointment = Assert.Single(activeAppointments!);
 
-        Assert.Equal(availability.Id, appointment.AvailabilityId);
+        Assert.Equal(availability.Id, appointment.AvailabilitySlotId);
         Assert.Equal("BOOKED", appointment.Status);
 
         client.DefaultRequestHeaders.Authorization =
@@ -158,7 +158,7 @@ public sealed class AppointmentFlowIntegrationTests
         Assert.NotNull(releasedSlots);
         Assert.Contains(
             releasedSlots,
-            slot => slot.AvailabilityId == availability.Id);
+            slot => slot.AvailabilitySlotId == availability.Id);
     }
 
     private static string CreateToken(
