@@ -3,7 +3,9 @@ using Dsw2026Tpi.Application.Interfaces;
 using Dsw2026Tpi.CrossCutting.Exceptions;
 using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
 using System.Globalization;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Dsw2026Tpi.Application.Services;
 
@@ -20,22 +22,34 @@ public class AppointmentService : IAppointmentService
     private readonly IPersistence _persistence;
     private readonly IAppointmentPersistence _appointmentPersistence;
     private readonly IClinicClock _clock;
+    private readonly IClinicalWriteScopeFactory _writeScopeFactory;
+    private readonly ILogger<AppointmentService> _logger;
 
     public AppointmentService(
         IPersistence persistence,
         IAppointmentPersistence appointmentPersistence,
-        IClinicClock clock)
+        IClinicClock clock,
+        IClinicalWriteScopeFactory writeScopeFactory,
+        ILogger<AppointmentService> logger)
     {
         _persistence = persistence;
         _appointmentPersistence = appointmentPersistence;
         _clock = clock;
+        _writeScopeFactory = writeScopeFactory;
+        _logger = logger;
     }
 
     public async Task<AppointmentModel.Response> Create(
         AppointmentModel.Request request,
         Guid patientUserId)
     {
+        // Validaciones de formato: no necesitan base de datos ni bloqueo.
         var reason = ValidateRequest(request);
+
+        // El alcance se abre ANTES de las lecturas que deciden la reserva.
+        // Si algo falla y no se llama a CompleteAsync, todo se deshace.
+        await using var scope = await _writeScopeFactory.BeginAsync();
+
         var patient = await GetAuthenticatedPatient(patientUserId);
 
         if (patient.Dni != request.Patient.Dni)
@@ -57,9 +71,15 @@ public class AppointmentService : IAppointmentService
                 nameof(request.AvailabilityId),
                 "La disponibilidad no corresponde al médico indicado.");
         if (availability.Status != AvailabilityStatus.Available)
+        {
+            _logger.LogWarning(
+                "Reserva rechazada: el slot {SlotId} no está disponible.",
+                availability.Id);
+
             throw new ConflictException(
                 "La disponibilidad no está disponible.",
                 "APPOINTMENT_AVAILABILITY_CONFLICT");
+        }
 
         EnsureAvailabilityIsNotPast(availability);
 
@@ -68,18 +88,33 @@ public class AppointmentService : IAppointmentService
 
         var created = await _appointmentPersistence.TryCreate(appointment);
         if (!created)
+        {
+            _logger.LogWarning(
+                "Reserva rechazada por conflicto al guardar el slot {SlotId}.",
+                availability.Id);
+
             throw new ConflictException(
                 "No se pudo crear la cita",
                 "APPOINTMENT_CREATION_CONFLICT");
+        }
 
-        // Se vuelve a leer con sus relaciones para devolver el DTO completo.
+        // Se arma la respuesta dentro del alcance: si falla, no se confirma nada.
         var persisted = await _persistence.First<Appointment>(
             current => current.Id == appointment.Id,
             AppointmentIncludes)
             ?? throw new InvalidOperationException(
                 "No se pudo recuperar la cita creada.");
 
-        return ToResponse(persisted);
+        var response = ToResponse(persisted);
+
+        await scope.CompleteAsync();
+
+        // Solo IDs: sin motivo clínico, DNI completo ni tokens.
+        _logger.LogInformation(
+            "Cita {AppointmentId} reservada (slot {SlotId}, médico {DoctorId}).",
+            appointment.Id, availability.Id, doctor.Id);
+
+        return response;
     }
 
     public async Task<IEnumerable<AppointmentModel.Response>> GetActiveByPatient(
@@ -94,12 +129,10 @@ public class AppointmentService : IAppointmentService
             throw new AuthorizationException();
         }
 
-        // Un único instante de referencia, con la hora del centro (Argentina).
         var now = _clock.GetCurrentLocalDateTime();
         var today = DateOnly.FromDateTime(now.DateTime);
         var currentTime = TimeOnly.FromDateTime(now.DateTime);
 
-        // El filtro de "activos" se hace en la consulta, no en memoria.
         var appointments = await _persistence.GetFiltered<Appointment>(
             appointment =>
                 appointment.PatientId == patient.Id
@@ -127,6 +160,8 @@ public class AppointmentService : IAppointmentService
                 .WithDetail(nameof(appointmentId), "Es obligatorio.");
         }
 
+        await using var scope = await _writeScopeFactory.BeginAsync();
+
         var patient = await GetAuthenticatedPatient(patientUserId);
 
         var appointment = await _persistence.First<Appointment>(
@@ -148,10 +183,20 @@ public class AppointmentService : IAppointmentService
         var cancelled = await _appointmentPersistence.TryCancel(appointmentId);
         if (!cancelled)
         {
+            _logger.LogWarning(
+                "Cancelación rechazada por conflicto: cita {AppointmentId}.",
+                appointmentId);
+
             throw new ConflictException(
                 "La cita no pudo cancelarse porque fue modificada.",
                 "APPOINTMENT_CONCURRENCY_CONFLICT");
         }
+
+        await scope.CompleteAsync();
+
+        _logger.LogInformation(
+            "Cita {AppointmentId} cancelada.",
+            appointmentId);
     }
 
     public Task<AppointmentModel.PagedResponse> GetByDate(
@@ -165,7 +210,6 @@ public class AppointmentService : IAppointmentService
             throw new ValidationException().WithDetail(nameof(date), "Es obligatoria.");
         }
 
-        // La consulta diaria es una búsqueda con la fecha como filtro.
         var request = new AppointmentModel.SearchRequest(
             null, null, null, date, pageSize, pageIndex, status);
 
@@ -192,7 +236,6 @@ public class AppointmentService : IAppointmentService
                     || appointment.Availability!.Date == request.Date.Value)
                 && (!status.HasValue
                     || appointment.Status == status.Value),
-            // Orden por fecha y hora de inicio (el Id lo agrega Paginate).
             appointment =>
                 appointment.Availability!.Date.DayNumber * 1440
                 + appointment.Availability!.StartTime.Hour * 60
@@ -300,6 +343,7 @@ public class AppointmentService : IAppointmentService
 
     private void EnsureAvailabilityIsNotPast(Availability availability)
     {
+        // El instante se toma después de adquirir el bloqueo.
         var now = _clock.GetCurrentLocalDateTime();
         var today = DateOnly.FromDateTime(now.DateTime);
         var currentTime = TimeOnly.FromDateTime(now.DateTime);
