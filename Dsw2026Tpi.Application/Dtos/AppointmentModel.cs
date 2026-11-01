@@ -14,7 +14,7 @@ namespace Dsw2026Tpi.Application.Dtos
             string Reason);
 
         public record PatientRequest(long Dni);
-
+        public record UpdateStatusRequest(string? Status);
         public record SearchRequest(
             Guid? SpecialityId,
             Guid? DoctorId,

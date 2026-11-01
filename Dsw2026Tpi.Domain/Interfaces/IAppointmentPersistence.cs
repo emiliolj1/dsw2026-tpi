@@ -6,4 +6,5 @@ public interface IAppointmentPersistence
 {
     Task<bool> TryCreate(Appointment appointment);
     Task<bool> TryCancel(Guid appointmentId);
+    Task<bool> TryUpdateStatus(Guid appointmentId, AppointmentStatus newStatus);
 }

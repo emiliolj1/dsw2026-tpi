@@ -198,7 +198,82 @@ public class AppointmentService : IAppointmentService
             "Cita {AppointmentId} cancelada.",
             appointmentId);
     }
+    public async Task<AppointmentModel.Response> UpdateStatus(
+    Guid appointmentId,
+    AppointmentModel.UpdateStatusRequest request)
+    {
+        if (appointmentId == Guid.Empty)
+        {
+            throw new ValidationException()
+                .WithDetail(nameof(appointmentId), "Es obligatorio.");
+        }
 
+        var newStatus = ParseStatus(request?.Status);
+        if (newStatus is not (AppointmentStatus.ATTENDED or AppointmentStatus.NO_SHOW))
+        {
+            throw new ValidationException().WithDetail(
+                "status", "Debe ser ATTENDED o NO_SHOW.");
+        }
+
+        await using var scope = await _writeScopeFactory.BeginAsync();
+
+        var appointment = await _persistence.First<Appointment>(
+            current => current.Id == appointmentId,
+            AppointmentIncludes)
+            ?? throw new EntityNotFoundException(nameof(Appointment));
+
+        if (appointment.Status != AppointmentStatus.BOOKED)
+        {
+            throw new ConflictException(
+                "Solo se puede cambiar el estado de una cita BOOKED.",
+                "APPOINTMENT_STATUS_CONFLICT");
+        }
+
+        var availability = appointment.Availability
+            ?? throw new InvalidOperationException(
+                "No se cargó la disponibilidad de la cita.");
+
+        // Solo cuando el intervalo del turno ya terminó (hora del centro).
+        var now = _clock.GetCurrentLocalDateTime();
+        var today = DateOnly.FromDateTime(now.DateTime);
+        var currentTime = TimeOnly.FromDateTime(now.DateTime);
+
+        var hasEnded = availability.Date < today
+            || (availability.Date == today && availability.EndTime <= currentTime);
+
+        if (!hasEnded)
+        {
+            throw new ConflictException(
+                "El turno todavía no terminó.",
+                "APPOINTMENT_NOT_FINISHED");
+        }
+
+        var updated = await _appointmentPersistence
+            .TryUpdateStatus(appointmentId, newStatus.Value);
+
+        if (!updated)
+        {
+            throw new ConflictException(
+                "La cita fue modificada por otra operación.",
+                "APPOINTMENT_CONCURRENCY_CONFLICT");
+        }
+
+        var persisted = await _persistence.First<Appointment>(
+            current => current.Id == appointmentId,
+            AppointmentIncludes)
+            ?? throw new InvalidOperationException(
+                "No se pudo recuperar la cita actualizada.");
+
+        var response = ToResponse(persisted);
+
+        await scope.CompleteAsync();
+
+        _logger.LogInformation(
+            "Cita {AppointmentId} pasó a {Status}.",
+            appointmentId, newStatus.Value);
+
+        return response;
+    }
     public Task<AppointmentModel.PagedResponse> GetByDate(
         DateOnly date,
         int pageSize = 10,
