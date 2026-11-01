@@ -163,4 +163,43 @@ public class AppointmentServiceTests
                     ? patient
                     : null);
     }
+    [Fact]
+    public async Task Create_WhenPersistenceFailsUnexpectedly_PropagatesErrorAndDoesNotComplete()
+    {
+        var patient = new Patient(Guid.NewGuid(), 30123456);
+        var speciality = new Speciality("Clinica", "Especialidad de prueba 500");
+        var doctor = new Doctor("Ana Perez", "LIC-500", speciality);
+        var slot = new Availability(
+            doctor.Id, new DateOnly(2026, 10, 22), new TimeOnly(10, 0));
+
+        var request = new AppointmentModel.Request(
+            doctor.Id,
+            slot.Id,
+            new AppointmentModel.PatientRequest(patient.Dni),
+            "Consulta de control");
+
+        SetupAuthenticatedPatient(patient);
+
+        _persistence
+            .Setup(p => p.GetById<Doctor>(doctor.Id, It.IsAny<string[]>()))
+            .ReturnsAsync(doctor);
+        _persistence
+            .Setup(p => p.GetById<Availability>(slot.Id, It.IsAny<string[]>()))
+            .ReturnsAsync(slot);
+
+        _appointmentPersistence
+            .Setup(p => p.TryCreate(It.IsAny<Appointment>()))
+            .ThrowsAsync(new InvalidOperationException("Fallo SQL simulado"));
+
+        var error = await Record.ExceptionAsync(
+            () => _service.Create(request, patient.UserId));
+
+        // Un fallo inesperado NO se disfraza de 409: se propaga (HTTP 500).
+        Assert.IsType<InvalidOperationException>(error);
+        Assert.IsNotType<ConflictException>(error);
+
+        _writeScope.Verify(
+            s => s.CompleteAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
 }
