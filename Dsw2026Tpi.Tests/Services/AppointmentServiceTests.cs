@@ -202,4 +202,24 @@ public class AppointmentServiceTests
             s => s.CompleteAsync(It.IsAny<CancellationToken>()),
             Times.Never);
     }
+    [Theory]
+    [InlineData("INVENTADO")]
+    [InlineData("CANCELLED")]
+    [InlineData("BOOKED")]
+    [InlineData(null)]
+    public async Task UpdateStatus_WithInvalidStatus_ThrowsValidation_AndNeverTouchesPersistence(
+    string? status)
+    {
+        await Assert.ThrowsAsync<ValidationException>(
+            () => _service.UpdateStatus(
+                Guid.NewGuid(),
+                new AppointmentModel.UpdateStatusRequest(status)));
+
+        _appointmentPersistence.Verify(
+            p => p.TryUpdateStatus(It.IsAny<Guid>(), It.IsAny<AppointmentStatus>()),
+            Times.Never);
+        _writeScope.Verify(
+            s => s.CompleteAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
 }
