@@ -222,4 +222,130 @@ public class AppointmentServiceTests
             s => s.CompleteAsync(It.IsAny<CancellationToken>()),
             Times.Never);
     }
+    // ---------- L04: regresiones de validacion ----------
+
+    [Theory]
+    [InlineData("cort")]
+    [InlineData("abc")]
+    [InlineData("    ")]
+    [InlineData(null)]
+    public async Task Create_WithInvalidReason_ThrowsValidation_AndNeverOpensScope(
+        string? reason)
+    {
+        var request = new AppointmentModel.Request(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            new AppointmentModel.PatientRequest(30123456),
+            reason!);
+
+        await Assert.ThrowsAsync<ValidationException>(
+            () => _service.Create(request, Guid.NewGuid()));
+
+        _writeScopeFactory.Verify(
+            f => f.BeginAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Create_WithEmptyGuids_ThrowsValidation()
+    {
+        var request = new AppointmentModel.Request(
+            Guid.Empty,
+            Guid.Empty,
+            new AppointmentModel.PatientRequest(30123456),
+            "Consulta de control");
+
+        await Assert.ThrowsAsync<ValidationException>(
+            () => _service.Create(request, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task Create_WhenDoctorDoesNotExist_ThrowsNotFound_AndNeverCompletes()
+    {
+        var patient = new Patient(Guid.NewGuid(), 30123456);
+        var request = new AppointmentModel.Request(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            new AppointmentModel.PatientRequest(patient.Dni),
+            "Consulta de control");
+
+        SetupAuthenticatedPatient(patient);
+
+        await Assert.ThrowsAsync<EntityNotFoundException>(
+            () => _service.Create(request, patient.UserId));
+
+        _writeScope.Verify(
+            s => s.CompleteAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Create_WhenSlotBelongsToAnotherDoctor_ThrowsValidation()
+    {
+        var patient = new Patient(Guid.NewGuid(), 30123456);
+        var speciality = new Speciality("Clinica", "Especialidad de prueba L04");
+        var doctor = new Doctor("Ana Perez", "LIC-L04-A", speciality);
+        var otherDoctor = new Doctor("Beto Gomez", "LIC-L04-B", speciality);
+        var slot = new Availability(
+            otherDoctor.Id, new DateOnly(2026, 10, 22), new TimeOnly(10, 0));
+
+        SetupAuthenticatedPatient(patient);
+        _persistence
+            .Setup(p => p.GetById<Doctor>(doctor.Id, It.IsAny<string[]>()))
+            .ReturnsAsync(doctor);
+        _persistence
+            .Setup(p => p.GetById<Availability>(slot.Id, It.IsAny<string[]>()))
+            .ReturnsAsync(slot);
+
+        var request = new AppointmentModel.Request(
+            doctor.Id,
+            slot.Id,
+            new AppointmentModel.PatientRequest(patient.Dni),
+            "Consulta de control");
+
+        await Assert.ThrowsAsync<ValidationException>(
+            () => _service.Create(request, patient.UserId));
+
+        _appointmentPersistence.Verify(
+            p => p.TryCreate(It.IsAny<Appointment>()),
+            Times.Never);
+    }
+
+    // El reloj de la clase esta fijo en 2026-10-21 10:00 (hora del centro).
+    [Theory]
+    [InlineData(2026, 10, 20, 15, 0)]  // dia anterior
+    [InlineData(2026, 9, 30, 10, 0)]   // mes anterior
+    [InlineData(2026, 10, 21, 9, 30)]  // mismo dia, hora ya pasada
+    public async Task Create_WithPastSlot_ThrowsValidation_AndNeverCreates(
+        int year, int month, int day, int hour, int minute)
+    {
+        var patient = new Patient(Guid.NewGuid(), 30123456);
+        var speciality = new Speciality("Clinica", "Especialidad de prueba L04");
+        var doctor = new Doctor("Ana Perez", "LIC-L04-P", speciality);
+        var slot = new Availability(
+            doctor.Id,
+            new DateOnly(year, month, day),
+            new TimeOnly(hour, minute));
+
+        SetupAuthenticatedPatient(patient);
+        _persistence
+            .Setup(p => p.GetById<Doctor>(doctor.Id, It.IsAny<string[]>()))
+            .ReturnsAsync(doctor);
+        _persistence
+            .Setup(p => p.GetById<Availability>(slot.Id, It.IsAny<string[]>()))
+            .ReturnsAsync(slot);
+
+        var request = new AppointmentModel.Request(
+            doctor.Id,
+            slot.Id,
+            new AppointmentModel.PatientRequest(patient.Dni),
+            "Consulta de control");
+
+        await Assert.ThrowsAsync<ValidationException>(
+            () => _service.Create(request, patient.UserId));
+
+        _appointmentPersistence.Verify(
+            p => p.TryCreate(It.IsAny<Appointment>()),
+            Times.Never);
+    }
 }
