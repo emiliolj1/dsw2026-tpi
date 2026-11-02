@@ -98,7 +98,46 @@ namespace Dsw2026Tpi.Data.Repositories
                 return false;
             }
         }
+        public async Task<bool> TryUpdateStatus(
+    Guid appointmentId,
+    AppointmentStatus newStatus)
+        {
+            var appointment = await _context.Set<Appointment>()
+                .SingleOrDefaultAsync(current =>
+                    current.Id == appointmentId && !current.Deleted);
 
+            if (appointment is null
+                || appointment.Status != AppointmentStatus.BOOKED)
+            {
+                return false;
+            }
+
+            switch (newStatus)
+            {
+                case AppointmentStatus.ATTENDED:
+                    appointment.MarkAsAttended();
+                    break;
+                case AppointmentStatus.NO_SHOW:
+                    appointment.MarkAsNoShow();
+                    break;
+                default:
+                    return false;
+            }
+
+            // El slot NO se libera: sigue ocupado como historia.
+            appointment.UpdatedAt = DateTime.UtcNow;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                _context.ChangeTracker.Clear();
+                return false;
+            }
+        }
         private static bool IsUniqueViolation(DbUpdateException exception)
         {
             // 2601 y 2627: violación de índice único / restricción única en SQL Server.

@@ -175,6 +175,22 @@ public sealed class AppointmentContractTests
     }
 
     // ---------- Ayudas para armar los escenarios ----------
+    [Fact]
+    public async Task UpdateStatus_AsPatient_Returns403_AndWithoutToken_Returns401()
+    {
+        using var factory = new CustomWebApplicationFactory();
+        var seed = await SeedAsync(factory, FutureDate(), new TimeOnly(9, 0));
+        var url = $"/api/appointments/{Guid.NewGuid()}/status";
+        const string json = "{\"status\":\"ATTENDED\"}";
+
+        using var patientClient = CreateClient(factory, seed.Patient.UserId, Roles.Patient);
+        using var forbidden = await patientClient.PatchAsync(url, JsonContent(json));
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+
+        using var anonymousClient = factory.CreateClient();
+        using var unauthorized = await anonymousClient.PatchAsync(url, JsonContent(json));
+        Assert.Equal(HttpStatusCode.Unauthorized, unauthorized.StatusCode);
+    }
 
     private sealed record SeedData(
         Speciality Speciality,
