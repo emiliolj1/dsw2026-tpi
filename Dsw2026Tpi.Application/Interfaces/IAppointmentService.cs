@@ -24,4 +24,8 @@ public interface IAppointmentService
 
     Task<AppointmentModel.PagedResponse> Search(
         AppointmentModel.SearchRequest request);
+
+    Task<AppointmentModel.Response> UpdateStatus(
+    Guid appointmentId,
+    AppointmentModel.UpdateStatusRequest request);
 }
