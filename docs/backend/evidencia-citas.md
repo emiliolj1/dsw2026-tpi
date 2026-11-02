@@ -1,4 +1,4 @@
-\# Evidencia del módulo de citas (L04)
+# Evidencia del módulo de citas (L04)
 
 
 
@@ -6,7 +6,7 @@ Entorno: Windows, LocalDB (SQL Server 17.0), .NET 10, rama test/lucas-citas-cier
 
 
 
-\## Resultados
+## Resultados
 
 \- Sin SQL: 136/136
 
@@ -14,7 +14,7 @@ Entorno: Windows, LocalDB (SQL Server 17.0), .NET 10, rama test/lucas-citas-cier
 
 
 
-\## Casos cubiertos
+## Casos cubiertos
 
 | Caso | Prueba | Resultado |
 
@@ -46,7 +46,7 @@ Entorno: Windows, LocalDB (SQL Server 17.0), .NET 10, rama test/lucas-citas-cier
 
 
 
-\## Ejemplos JSON (sin datos reales)
+## Ejemplos JSON (sin datos reales)
 
 
 
@@ -68,7 +68,7 @@ Error de conflicto:
 
 
 
-\## Pendiente
+## Pendiente
 
 \- Prueba por HTTP con tokens emitidos por login real (depende de E01 integrada; la hace Charly en C04).
 
