@@ -61,6 +61,75 @@ public sealed class AppointmentSearchSqlTests
         Assert.Equal("09:30", cancelled.Data.Single().StartTime);
     }
 
+    [Fact]
+    public async Task Search_WithTiedDateAndTime_PaginatesWithoutDuplicatesOrGaps()
+    {
+        var day = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(2);
+        var suffix = Guid.NewGuid().ToString("N");
+
+        var speciality = new Speciality(
+            $"Esp {suffix}", "Especialidad para empates SQL de citas");
+        var patient = new Patient(
+            Guid.NewGuid(),
+            Random.Shared.NextInt64(10_000_000, 99_999_999),
+            "Paciente Empates");
+
+        var entities = new List<EntityBase> { speciality, patient };
+        var expectedIds = new List<Guid>();
+
+        for (var index = 1; index <= 5; index++)
+        {
+            var doctor = new Doctor(
+                $"Doctor Empate {index}", $"SQL-TIE-{suffix}-{index}", speciality);
+            var slot = new Availability(doctor.Id, day, new TimeOnly(9, 0));
+            var appointment = new Appointment(
+                doctor.Id, slot.Id, patient.Id, "Consulta empate SQL");
+
+            entities.Add(doctor);
+            entities.Add(slot);
+            entities.Add(appointment);
+            expectedIds.Add(appointment.Id);
+        }
+
+        using (var seedScope = _fixture.Factory.Services.CreateScope())
+        {
+            var context = seedScope.ServiceProvider
+                .GetRequiredService<Dsw2026TpiDbContext>();
+            context.AddRange(entities);
+            await context.SaveChangesAsync();
+        }
+
+        async Task<List<Guid>> ReadAllPagesAsync()
+        {
+            var ids = new List<Guid>();
+
+            for (var pageIndex = 0; pageIndex < 4; pageIndex++)
+            {
+                using var scope = _fixture.Factory.Services.CreateScope();
+                var service = scope.ServiceProvider
+                    .GetRequiredService<IAppointmentService>();
+
+                var page = await service.Search(
+                    new AppointmentModel.SearchRequest(
+                        speciality.Id, null, null, day, 2, pageIndex));
+
+                Assert.Equal(5, page.Total);
+                ids.AddRange(page.Data.Select(a => a.AppointmentsId));
+            }
+
+            return ids;
+        }
+
+        var firstRun = await ReadAllPagesAsync();
+        var secondRun = await ReadAllPagesAsync();
+
+        Assert.Equal(5, firstRun.Count);
+        Assert.Equal(5, firstRun.Distinct().Count());
+        Assert.True(expectedIds.ToHashSet().SetEquals(firstRun));
+
+        // Orden estable: la misma consulta devuelve la misma secuencia.
+        Assert.Equal(firstRun, secondRun);
+    }
     private sealed record Seed(Guid DoctorId, DateOnly Day1, DateOnly Day2);
 
     private async Task<Seed> SeedAsync()
