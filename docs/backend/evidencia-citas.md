@@ -2,15 +2,15 @@
 
 
 
-Entorno: Windows, LocalDB (SQL Server 17.0), .NET 10, rama test/lucas-citas-cierre, commit <SHA>.
+Entorno: Windows, LocalDB (SQL Server 17.0), .NET 10, rama test/lucas-citas-cierre, commit 082ff80.
 
 
 
 \## Resultados
 
-\- Sin SQL: <N>/<N>
+\- Sin SQL: 136/136
 
-\- Suite SQL completa: <N>/<N>, 0 omitidas
+\- Suite SQL completa: 87/87, 0 omitidas
 
 
 
