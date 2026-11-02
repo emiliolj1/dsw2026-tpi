@@ -72,3 +72,7 @@ Error de conflicto:
 
 \- Prueba por HTTP con tokens emitidos por login real (depende de E01 integrada; la hace Charly en C04).
 
+
+## Pendientes de L04
+- Prueba HTTP con token emitido por login real (E01): a completar en el módulo o cubierta por C04.
+- Historial de citas consultable tras la baja de su médico: a completar en el módulo o cubierta por C04.
