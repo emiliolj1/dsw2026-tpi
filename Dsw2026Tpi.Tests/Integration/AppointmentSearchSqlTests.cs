@@ -130,6 +130,54 @@ public sealed class AppointmentSearchSqlTests
         // Orden estable: la misma consulta devuelve la misma secuencia.
         Assert.Equal(firstRun, secondRun);
     }
+    [Fact]
+    public async Task Search_AfterDoctorAndSpecialityRemoved_StillReturnsHistory()
+    {
+        var day = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(2);
+        var suffix = Guid.NewGuid().ToString("N");
+
+        var speciality = new Speciality(
+            $"Esp {suffix}", "Especialidad dada de baja para historial")
+        {
+            Deleted = true
+        };
+        var doctor = new Doctor("Ana Historial SQL", $"SQL-HIS-{suffix}", speciality)
+        {
+            Deleted = true
+        };
+        var patient = new Patient(
+            Guid.NewGuid(),
+            Random.Shared.NextInt64(10_000_000, 99_999_999),
+            "Paciente Historial");
+        var slot = new Availability(doctor.Id, day, new TimeOnly(9, 0));
+        var appointment = new Appointment(
+            doctor.Id, slot.Id, patient.Id, "Consulta historial SQL");
+        appointment.Cancel();
+
+        using (var seedScope = _fixture.Factory.Services.CreateScope())
+        {
+            var context = seedScope.ServiceProvider
+                .GetRequiredService<Dsw2026TpiDbContext>();
+            context.AddRange(speciality, doctor, patient, slot, appointment);
+            await context.SaveChangesAsync();
+        }
+
+        using var scope = _fixture.Factory.Services.CreateScope();
+        var service = scope.ServiceProvider
+            .GetRequiredService<IAppointmentService>();
+
+        var page = await service.Search(
+            new AppointmentModel.SearchRequest(
+                null, doctor.Id, null, null, 10, 0, "CANCELLED"));
+
+        Assert.Equal(1, page.Total);
+
+        var item = page.Data.Single();
+        Assert.Equal(appointment.Id, item.AppointmentsId);
+        Assert.Equal("CANCELLED", item.AppointmentsStatus);
+        Assert.Equal("Ana Historial SQL", item.Doctor.Name);
+        Assert.Equal(speciality.Name, item.Doctor.Specialty.Name);
+    }
     private sealed record Seed(Guid DoctorId, DateOnly Day1, DateOnly Day2);
 
     private async Task<Seed> SeedAsync()
