@@ -2,7 +2,7 @@
 
 
 
-Entorno: Windows, LocalDB (SQL Server 17.0), .NET 10, rama test/lucas-citas-cierre, commit 082ff80.
+Entorno: Windows, LocalDB (SQL Server 17.0), .NET 10, rama test/lucas-citas-cierre, commit 70d6ed2.
 
 
 
@@ -10,7 +10,7 @@ Entorno: Windows, LocalDB (SQL Server 17.0), .NET 10, rama test/lucas-citas-cier
 
 \- Sin SQL: 136/136
 
-\- Suite SQL completa: 87/87, 0 omitidas
+\- Suite SQL completa: 89/89, 0 omitidas
 
 
 
@@ -68,11 +68,5 @@ Error de conflicto:
 
 
 
-## Pendiente
-
-\- Prueba por HTTP con tokens emitidos por login real (depende de E01 integrada; la hace Charly en C04).
-
-
 ## Pendientes de L04
-- Prueba HTTP con token emitido por login real (E01): a completar en el módulo o cubierta por C04.
-- Historial de citas consultable tras la baja de su médico: a completar en el módulo o cubierta por C04.
+- Sin pendientes conocidos. La prueba HTTP con token de login real (E01) quedó en AppointmentRealLoginSqlTests (reserva y cancelación). El historial tras la baja de médico y especialidad quedó en AppointmentSearchSqlTests (StillReturnsHistory).
