@@ -106,6 +106,31 @@ public sealed class AppointmentStatusSqlTests
             AppointmentStatus.CANCELLED, await GetStatusAsync(appointmentId));
     }
 
+    [Theory]
+    [InlineData("ATTENDED", AppointmentStatus.ATTENDED)]
+    [InlineData("NO_SHOW", AppointmentStatus.NO_SHOW)]
+    public async Task ClosedAppointment_CannotBeCancelledByPatient(
+    string status, AppointmentStatus expected)
+    {
+        var appointmentId = await SeedBookedAsync(daysFromToday: -2);
+        var patientUserId = await GetPatientUserIdAsync(appointmentId);
+
+        await UpdateAsync(appointmentId, status);
+
+        using (var scope = _fixture.Factory.Services.CreateScope())
+        {
+            var service = scope.ServiceProvider
+                .GetRequiredService<IAppointmentService>();
+
+            await Assert.ThrowsAsync<ConflictException>(
+                () => service.Cancel(appointmentId, patientUserId));
+        }
+
+        Assert.Equal(expected, await GetStatusAsync(appointmentId));
+        Assert.Equal(
+            AvailabilityStatus.Booked,
+            await GetSlotStatusOfAppointmentAsync(appointmentId));
+    }
     // ---------- Ayudas ----------
 
     private async Task<Guid> SeedBookedAsync(int daysFromToday)
