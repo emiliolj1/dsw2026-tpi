@@ -54,7 +54,7 @@ public class AvailabilityService : IAvailabilityService
         Guid doctorId)
     {
         ValidateDoctorId(doctorId);
-        await EnsureDoctorExists(doctorId);
+        await EnsureActiveDoctorExists(doctorId);
         var now = _clock.GetCurrentLocalDateTime();
         var today = DateOnly.FromDateTime(now.DateTime);
         var time = TimeOnly.FromDateTime(now.DateTime);
