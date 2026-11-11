@@ -68,7 +68,7 @@ en development.
 | E02 | Emilio | G02, C01, E01 | Implementada y verificada localmente; pendiente de PR | fix/emilio-api-transversal | - | - | 116 pruebas no SQL y 62 SQL aprobadas; navegador y dependencias verificados; evidencia-api-transversal.md |
 | N03 | Nacho | N02, C01, L02 | Pendiente | - | - | - | - |
 | L03 | Lucas | L02 | Pendiente | - | - | - | - |
-| N04 | Nacho | N03, E01, L03 | Pendiente | - | - | - | - |
+| N04 | Nacho (implementación), Emilio (validación) | N03, E01, L03 | Integrada y validada localmente; revisión de evidencia pendiente | test/nacho-migraciones-preservacion | #34 | af360f1 | 226 pruebas aprobadas; restauración, preservación de datos y consulta por API verificadas en copia sintética |
 | L04 | Lucas | L03, N03, E01 | Pendiente | - | - | - | - |
 | C04 | Charly | E01, E02, C03, N04, L04 | Pendiente | - | - | - | - |
 | C05 | Charly | C04, N04 | Pendiente | - | - | - | - |
@@ -321,8 +321,18 @@ y citas. No se cambió GetMonthlyPlanning.
   dependencias directas y transitivas el 2026-10-25.
 - Detalle: [evidencia-api-transversal.md](evidencia-api-transversal.md).
 - Calendario acordado: [calendario-operativo.md](calendario-operativo.md).
-- C04 sigue dependiendo de la integración de E02, N04 y L04,
-  además de E01 y C03 ya integradas.
+- E02, N04 y L04 ya están integradas. El resultado de la aceptación C04
+  se verifica por separado.
+
+## N04 — Preservación de datos al migrar
+
+- Implementación: Nacho, PR #34 (`af360f1`).
+- Validación local: Emilio, 2026-11-11, sobre el mismo SHA integrado.
+- Dependencias integradas: E01 (#27), N03 (#31) y L03 (#32).
+- Regresión: 136 pruebas sin SQL y 90 SQL aprobadas, sin fallos ni omisiones.
+- Sobre una copia sintética restaurada se preservaron inventario, IDs, estados,
+  vínculos de identidad y RowVersion. La API recuperó la misma reserva.
+- Detalle y límites: [evidencia-migraciones.md](evidencia-migraciones.md).
 
 ## Pendientes transversales conocidos
 
