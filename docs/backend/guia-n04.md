@@ -1,8 +1,10 @@
 # N04 — Validación de migraciones y preservación de datos
 
-**Estado del entregable:** código de pruebas y auditoría preparados. La ejecución real,
-la comparación de una copia con datos y la aceptación del equipo siguen pendientes.
-No declarar N04 cerrada únicamente por haber creado este PR.
+**Estado del entregable:** PR #34 integrado y validación local ejecutada por Emilio
+el 2026-11-11 en `af360f1`. Se comprobaron la preservación sobre una copia
+restaurada con datos sintéticos, la regresión y el acceso por API a la reserva
+preexistente. Resultados: [evidencia-migraciones.md](evidencia-migraciones.md).
+La revisión del equipo y la aceptación integrada C04 se registran por separado.
 
 ## Dependencias verificadas en GitHub (2026-11-07)
 
@@ -96,19 +98,16 @@ terminar. La prueba N04 aplica el mismo control de nombre al limpiarse.
 Si otra tarea introduce un cambio de esquema, revisarlo y generar una migración
 N04 adicional solo después de acordar el modelo y la estrategia de respaldo.
 
-## Criterio de aceptación y PR
+## Resultado de la validación local
 
-- [ ] `dotnet build` correcto en Windows con .NET 10.
-- [ ] `MigrationPreservationSqlTests` aprobado sobre SQL Server real.
-- [ ] Regresión `Category=SqlServer` aprobada y registrada.
-- [ ] Pruebas no SQL aprobadas y registradas.
-- [ ] Base con datos reales/sintéticos previamente normalizada restaurada a
-      una copia, inventario pre/post comparable y sin pérdida de registros.
-- [ ] Login real de un usuario de prueba y consulta histórica verificados.
-- [ ] Bases legadas clasificadas; cualquier conversión destructiva bloqueada
-      hasta procedimiento aprobado.
-- [ ] `evidencia-migraciones.md` actualizada con resultados reales y revisión.
+- Compilación correcta en Windows con .NET 10 durante `dotnet test`.
+- `MigrationPreservationSqlTests` aprobada sobre SQL Server LocalDB.
+- Regresión completa: 136 pruebas sin SQL y 90 SQL aprobadas.
+- Copia restaurada con datos sintéticos: inventario, IDs, estados y vínculos
+  preservados al aplicar N01.
+- Login real del paciente y consulta de la reserva preexistente: HTTP 200.
+- Implementación integrada mediante PR #34, merge `af360f1`.
+- Revisión de la evidencia por el equipo: pendiente.
 
-**PR propuesto:** `test(n04): verificar migraciones y conservación de datos`,
-desde `test/nacho-migraciones-preservacion` hacia `development`. No marcar
-el PR como aceptación final si quedan verificaciones pendientes.
+La prueba se realizó sobre Identity ya normalizado a GUID. Cualquier
+conversión de bases legadas requiere un procedimiento validado aparte.
