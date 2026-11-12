@@ -34,16 +34,8 @@ namespace Dsw2026Tpi.Application.Dtos
             string StartTime,
             string EndTime,
             string AvailableTime,
-            string Reason)
-        {
-            // TEMPORAL: solo para que AppointmentFlowIntegrationTests
-            // (de Charly) siga compilando. No salen en el JSON.
-            // Borrar cuando Charly actualice ese test en C04.
-            [JsonIgnore] public Guid Id => AppointmentsId;
-            [JsonIgnore] public Guid AvailabilityId => AvailabilitySlotId;
-            [JsonIgnore] public string Status => AppointmentsStatus;
-        }
-
+            string Reason);
+       
         public record PagedResponse(
             IEnumerable<Response> Data,
             int Total,

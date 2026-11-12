@@ -107,7 +107,7 @@ public sealed class AppointmentFlowIntegrationTests
         var appointment = Assert.Single(activeAppointments!);
 
         Assert.Equal(availability.Id, appointment.AvailabilitySlotId);
-        Assert.Equal("BOOKED", appointment.Status);
+        Assert.Equal("BOOKED", appointment.AppointmentsStatus);
 
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(
@@ -128,7 +128,7 @@ public sealed class AppointmentFlowIntegrationTests
         Assert.NotNull(searchResult);
         Assert.Contains(
             searchResult.Data,
-            result => result.Id == appointment.Id);
+            result => result.AppointmentsId == appointment.AppointmentsId);
 
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(
@@ -137,7 +137,7 @@ public sealed class AppointmentFlowIntegrationTests
 
         using var cancellationResponse =
             await client.DeleteAsync(
-                $"/api/appointments/{appointment.Id}");
+                $"/api/appointments/{appointment.AppointmentsId}");
 
         Assert.Equal(
      HttpStatusCode.OK,

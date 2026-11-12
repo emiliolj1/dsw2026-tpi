@@ -112,12 +112,16 @@ del orden de ejecución.
 dotnet restore
 dotnet build --no-restore --nologo
 dotnet test --no-build --filter "Category!=SqlServer" --nologo
-dotnet test --no-build --filter "Category=SqlServer" --nologo --logger trx
+dotnet test --no-build --filter "Category=SqlServer&Purpose!=Performance" --nologo --logger trx
 ```
 
 Ejecutar ambas categorías por separado, como se verificó en C01.
 La fábrica InMemory preexistente utiliza variables globales de entorno;
 C01 no modifica ese componente.
+
+La regresión SQL excluye el caso de rendimiento de C04. Para ejecutar
+esa medición por separado con el filtro `Purpose=Performance`, consultar
+el comando y el alcance de la prueba en [rendimiento.md](rendimiento.md).
 
 Si falta DSW2026_TEST_SQL_CONNECTION, el fixture lanza un error explícito.
 Los problemas de conexión, migración o arranque también hacen fallar
