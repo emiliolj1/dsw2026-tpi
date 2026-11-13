@@ -13,9 +13,9 @@ Fuentes:
 Base inicial: 580eddcb9d0b1e18698a0d02bebed8d64b3dfd84.
 Rama de integración: development.
 
-Este documento describe el comportamiento que debe alcanzarse.
-La implementación y sus pruebas se registran en seguimiento.md.
-Publicar este contrato no equivale a completar las tareas de código.
+Este documento describe el contrato público vigente sobre la base
+`dd89963`. La implementación y sus pruebas se registran en
+[seguimiento.md](seguimiento.md) y [cierre-backend.md](cierre-backend.md).
 
 ## 2. Convenciones generales
 
@@ -248,9 +248,10 @@ POST y PUT /api/availabilities reciben:
 - Se generan bloques completos de 30 minutos.
 - No se generan slots pasados ni en días no laborables.
 - Los días no laborables se obtienen de configuración JSON.
-- La entrada admite días en español o inglés, sin distinguir mayúsculas.
-- Nacho documentará la representación normalizada de day antes de
-  integrar N02, manteniendo compatibilidad con las entradas acordadas.
+- La entrada admite días en español o inglés, sin distinguir mayúsculas
+  y con o sin tildes.
+- Las respuestas normalizan `day` al español en mayúsculas: `LUNES`,
+  `MARTES`, `MIÉRCOLES`, `JUEVES`, `VIERNES`, `SÁBADO` y `DOMINGO`.
 
 GET /api/doctors/{id}/availabilities devuelve:
 
@@ -258,14 +259,13 @@ GET /api/doctors/{id}/availabilities devuelve:
 [
   {
     "id": "55555555-5555-4555-8555-555555555555",
-    "day": "Monday",
+    "day": "LUNES",
     "startTime": "09:00",
     "endTime": "12:00"
   }
 ]
 ```
 
-El ejemplo de day ilustra el formato de entrada admitido.
 Si no hay planificación del mes actual, la respuesta es [].
 
 POST y PUT devuelven la planificación resultante:
@@ -278,7 +278,7 @@ POST y PUT devuelven la planificación resultante:
   "days": [
     {
       "id": "55555555-5555-4555-8555-555555555555",
-      "day": "Monday",
+      "day": "LUNES",
       "startTime": "09:00",
       "endTime": "12:00"
     }
@@ -316,7 +316,9 @@ Respuesta HTTP 200:
 ```
 
 Solo devuelve slots disponibles y no pasados de un médico activo.
-Sin slots reservables, devuelve [].
+Si el médico está activo pero no tiene slots reservables, devuelve `[]`.
+Si el médico no existe, fue eliminado o está inactivo, devuelve
+`404 ENTITY_NOTFOUND`.
 
 ## 10. Citas
 
@@ -534,9 +536,11 @@ La cancelación del cliente no se transforma en un error 500 artificial.
 No convertir indiscriminadamente errores de conexión o implementación en 409.
 No devolver secretos, tokens ni trazas internas en las respuestas.
 
-Si PUT retira un slot antes de una reserva concurrente, la reserva debe
-fallar con 404 o 409 y nunca dejar una cita creada.
-Lucas documentará el resultado elegido al integrar L02.
+Si un PUT ya retiró el slot, la reserva devuelve HTTP 404 con
+`ENTITY_NOTFOUND` y no crea una cita. Un slot vigente que dejó de estar
+disponible devuelve HTTP 409 con `APPOINTMENT_AVAILABILITY_CONFLICT`. Si
+vence el tiempo de espera del bloqueo común, el conflicto es HTTP 409
+con `CLINICAL_WRITE_CONFLICT`. Ver [errores de citas](errores-citas.md).
 
 ## 14. Límites de solicitudes
 
@@ -731,9 +735,9 @@ Verificación local reportada por Emilio:
 
 Las pruebas de persistencia actuales utilizan InMemory.
 
-La exclusión mutua, el timeout, la liberación del bloqueo y el rollback
-en SQL Server real quedan pendientes de la infraestructura de C01.
-La compilación y los mocks no acreditan esas garantías.
+C01 verificó exclusión mutua, timeout, liberación del bloqueo y rollback
+con [SQL Server real](pruebas-sql.md). La compilación y los mocks no
+acreditan esas garantías.
 
 ## 16. Adaptaciones y límites del alcance
 
@@ -777,8 +781,8 @@ NonWorkingDays:Dates utiliza fechas yyyy-MM-dd.
 La base acordada para E02 cubre feriados nacionales de Argentina de 2026.
 Las fechas, fuentes, responsable y cierres adicionales pendientes se
 documentan en [calendario-operativo.md](calendario-operativo.md).
-N02 debe verificar su aplicación a la planificación mensual.
+N02 omite las fechas configuradas al generar slots. La comprobación de un
+feriado operativo se distingue de la comparación entre lista y configuración.
 
-La evidencia de E02 se encuentra en
-[evidencia-api-transversal.md](evidencia-api-transversal.md).
-Su verificación local no equivale a integración ni a aceptación C04.
+E02 se integró mediante el PR #28. Su [evidencia](evidencia-api-transversal.md)
+y la [aceptación C04](evidencia-aceptacion.md) son corridas distintas.

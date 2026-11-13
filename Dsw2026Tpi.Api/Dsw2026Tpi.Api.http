@@ -1,7 +1,7 @@
 @baseUrl = http://localhost:5278
 @adminEmail = admin@example.test
 @adminPassword = REEMPLAZAR_CON_CLAVE_LOCAL
-@patientEmail = carlitos@gmail.com
+@patientEmail = paciente@example.test
 @patientDni = 12345678
 @adminToken = REEMPLAZAR_CON_TOKEN_ADMIN
 @patientToken = REEMPLAZAR_CON_TOKEN_PACIENTE
@@ -14,7 +14,8 @@
 @planningEnd = 10:00
 
 # Ejecutar una solicitud a la vez, en orden, sobre una base local de desarrollo.
-# Usar el email y la contraseña del administrador configurado en esa instalación.
+# Usar las credenciales de administrador de esa instalación y un paciente sintético.
+# Si se repite el recorrido en la misma base, usar otra matrícula para el médico.
 # Copiar los tokens sin comillas y sin el prefijo Bearer.
 # Antes de hacer commit, restaurar los marcadores de contraseña, tokens e IDs.
 
@@ -61,7 +62,7 @@ Content-Type: application/json
   "specialtyId": "{{specialtyId}}"
 }
 
-### 6. Crear planificación — 201
+### 6. Crear planificación — 201; verificar day en español en mayúsculas
 # Elegir un día y un horario futuro del mes vigente que no sea feriado.
 # Usar el formato HH:mm, por ejemplo 09:00.
 POST {{baseUrl}}/api/availabilities
@@ -97,7 +98,7 @@ Content-Type: application/json
   "reason": "Consulta sintética de demostración"
 }
 
-### 9. Consultar mis citas — 200; verificar que figure la cita BOOKED
+### 9. Consultar mis citas — 200; verificar el mismo appointmentsId y appointmentsStatus BOOKED
 GET {{baseUrl}}/api/appointments/patient?dni={{patientDni}}
 Authorization: Bearer {{patientToken}}
 
@@ -109,7 +110,7 @@ Authorization: Bearer {{adminToken}}
 DELETE {{baseUrl}}/api/appointments/{{appointmentId}}
 Authorization: Bearer {{patientToken}}
 
-### 12. Consultar turnos libres — 200; verificar que reaparezca el mismo availabilitySlotId
+### 12. Consultar turnos libres — 200; verificar que reaparezca el mismo availabilitySlotId si sigue siendo futuro
 GET {{baseUrl}}/api/availabilities?doctorId={{doctorId}}
 Authorization: Bearer {{patientToken}}
 

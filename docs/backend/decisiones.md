@@ -2,6 +2,7 @@
 
 Fecha de registro inicial: 2026-10-07.
 Actualización documental de E02: 2026-10-25.
+Consolidación de E03: base `dd89963`.
 Rama de integración: development.
 Responsable de coordinación: Emilio.
 
@@ -35,7 +36,8 @@ En E02 se agregó una referencia explícita a System.Security.Cryptography.Pkcs
 9.0.21 en Data para corregir las alertas de la dependencia transitiva 9.0.4.
 Se conservan EF Core 10.0.9 y Microsoft.Data.SqlClient 6.1.1.
 La evidencia y las consultas de vulnerabilidades están en
-evidencia-api-transversal.md; la corrección aún no está integrada.
+[evidencia-api-transversal.md](evidencia-api-transversal.md). La corrección
+se integró con E02 (PR #28, `40a114c`).
 
 ## D02 — Ramas y dependencias
 
@@ -89,7 +91,8 @@ Los demás integrantes le comunican los cambios de modelo necesarios.
 No se generan migraciones paralelas desde otras tareas.
 
 Se priorizan migraciones aditivas y preservación de datos.
-N04 debe documentar y probar la estrategia completa de actualización.
+N04 verificó la preservación en una copia con Identity ya normalizado a GUID.
+Ver [evidencia de migraciones](evidencia-migraciones.md) para los límites.
 
 ## D05 — Fecha y hora del centro
 
@@ -128,7 +131,7 @@ sin Access-Control-Allow-Origin.
 
 Ese bloqueo del navegador no se documenta como un HTTP 403 de la API.
 Las pruebas SQL verificaron además los headers y el HTTP 204 de OPTIONS.
-E02 continúa pendiente de PR e integración.
+E02 se integró mediante el PR #28 (`40a114c`).
 
 Si cambian los puertos, deben actualizarse configuración,
 contrato y documentación.
@@ -159,11 +162,11 @@ preservando reservas e historia.
 PUT con days vacío retira la atención futura libre del mes.
 
 Los feriados y días no laborables se obtienen de configuración JSON.
-El calendario operativo debe verificarse antes del cierre.
+El calendario debe verificarse antes de su uso operativo.
 Las fechas artificiales usadas en tests no se trasladan
 automáticamente a la configuración operativa.
 
-E02 coordina la configuración y N02 verifica su aplicación a la agenda.
+E02 incorporó la configuración; N02 la aplica al generar slots.
 
 Para E02 se acordó una base de feriados nacionales de Argentina de 2026,
 con 17 fechas y revisión de fuentes oficiales al 2026-10-25.
@@ -174,8 +177,8 @@ El alcance, las fuentes y las fechas están en
 No se incluyen automáticamente días turísticos ni cierres provinciales,
 municipales o propios del centro. Esos cierres requieren confirmación.
 Antes de operar en 2027 debe actualizarse el calendario.
-La regresión de E02 no acredita por sí sola la exclusión de esas fechas
-en la nueva planificación mensual de N02.
+El código de N02 omite las fechas configuradas. Las evidencias de C04 y C05
+no registran una comprobación específica con un feriado operativo.
 
 ## D09 — Escrituras clínicas y concurrencia
 
@@ -190,14 +193,16 @@ C01 verificó confirmación, rollback y timeout entre conexiones
 independientes mediante el PR #22, SHA de merge 1645370.
 
 Las verificaciones de concurrencia entre módulos se completan
-en sus tareas correspondientes y en C04.
+en las tareas de cada módulo y en C04.
 
 El alcance se inicia antes de las lecturas decisorias.
 Solo CompleteAsync confirma; Dispose sin completar revierte.
 
 Se conservan rowversion e índices únicos como defensas adicionales.
 
-C04 medirá el efecto de la serialización compartida sobre el rendimiento.
+C04 comprobó carreras entre módulos y midió por separado la latencia de
+consultas secuenciales. La medición no aísla el costo del bloqueo ni
+evalúa escrituras concurrentes. Ver [rendimiento.md](rendimiento.md).
 
 ## D10 — Bajas, relaciones y estados
 
@@ -249,7 +254,8 @@ ni acredita el cierre completo del backend.
 
 C01 proporciona la infraestructura SQL.
 Cada integrante prueba su módulo.
-C04 ejecuta la aceptación integrada y mide rendimiento.
+C04 ejecutó la [aceptación integrada](evidencia-aceptacion.md) y midió
+[rendimiento](rendimiento.md) en LocalDB.
 
 Las pruebas de concurrencia utilizarán conexiones y DbContext
 independientes. Los mocks no demuestran comportamiento del motor SQL.
@@ -301,13 +307,9 @@ El panel reutiliza totales paginados y las citas del día BOOKED.
 No se crea un módulo adicional de estadísticas para elementos
 decorativos del mockup.
 
-## Pendientes de concreción
+## Seguimiento operativo
 
 | Punto | Responsable | Momento |
 |---|---|---|
-| Confirmar y registrar la revisión de contratos e interfaces por el equipo | Emilio coordina | Coordinación de los módulos |
-| Fijar representación normalizada de day en respuestas | Nacho, coordinado con Emilio | Antes de integrar N02 |
-| Documentar respuesta ante reserva de un slot retirado | Lucas, coordinado con Nacho | L02 |
-| Confirmar cierres adicionales del centro y comprobar su aplicación a la agenda | Emilio coordina con Nacho | N02 y aceptación C04 |
+| Confirmar cierres adicionales del centro y comprobar la exclusión de una fecha configurada en la agenda | Emilio coordina | Antes de usar el calendario operativo |
 | Actualizar feriados y revisar nuevas disposiciones para el siguiente año | Emilio coordina | Antes de operar en 2027 |
-| Documentar condiciones y resultados de rendimiento | Charly | C04 |

@@ -13,17 +13,8 @@
 - Paquetes EF Core consultados en Data y Tests: 10.0.9.
 - Herramienta CLI dotnet-ef inicial: 10.0.9.
 
-Última verificación de integraciones: 2026-10-25.
-- Commit remoto de development: a9d3930ef23846c1b9f761165e116f65b8f41551.
-- G01 y G02: PR #21, SHA de merge 11cd043.
-- C01: PR #22, SHA de merge 1645370.
-- C02: PR #24, SHA de merge 11cc6fe.
-- C03: PR #25, SHA de merge a39cfab.
-- L01: código integrado por PR #26, SHA de merge 82e2f0e;
-  evidencia de ejecución específica pendiente de registrar.
-- E01: PR #27, SHA de merge a9d3930.
-- E02: verificada localmente en fix/emilio-api-transversal;
-  todavía sin PR ni SHA integrado.
+Base revisada para E03: [`dd89963`](https://github.com/emiliolj1/dsw2026-tpi/commit/dd89963c82af5c226ee72ee53652f898a70a7ce0), merge de C05 en `development`.
+El [cierre del backend](cierre-backend.md) reúne las verificaciones y sus límites.
 
 ## Evidencia inicial
 
@@ -59,20 +50,20 @@ en development.
 | G02 | Emilio | G01, incluido en el mismo PR | Integrada | docs/emilio-contratos-cierre | #21 | 11cd043 | 72 pruebas originales aprobadas; alcance SQL verificado posteriormente en C01 |
 | C01 | Charly | G02 | Integrada | test/charly-sqlserver-base | #22 | 1645370 | 77 pruebas no SQL y 5 SQL aprobadas, sin fallidas ni omitidas; docs/backend/pruebas-sql.md |
 | C02 | Charly | G02 | Integrada | feature/charly-catalogos-v17 | #24 | 11cc6fe | 87 pruebas no SQL y 7 SQL aprobadas; evidencia en la sección C02 |
-| N01 | Nacho | G02 | Pendiente | - | - | - | - |
-| L01 | Lucas | G02 | Código integrado; evidencia de ejecución pendiente | feature/lucas-contratos-citas | #26 | 82e2f0e | PR fusionado; no se atribuyen resultados no registrados |
+| N01 | Nacho | G02 | Integrada | feature/nacho-reglas-mensuales | #29 | 521240d | Modelo y migración de reglas; preservación comprobada en [N04](evidencia-migraciones.md) |
+| L01 | Lucas | G02 | Integrada | feature/lucas-contratos-citas | #26 | 82e2f0e | Sin ejecución independiente registrada; regresión posterior en [L04](evidencia-citas.md) y contrato final en [C04](evidencia-aceptacion.md) |
 | E01 | Emilio | G02, C01 | Integrada | fix/emilio-autenticacion-cierre | #27 | a9d3930 | 112 pruebas no SQL y 46 SQL aprobadas; docs/backend/evidencia-autenticacion.md |
-| C03 | Charly | C01, C02 | Integrada | fix/charly-bajas-relacionadas | #25 | a39cfab | 93 pruebas no SQL y 26 SQL aprobadas; concurrencia con reservas pendiente para C04 |
-| N02 | Nacho | N01 | Pendiente | - | - | - | - |
-| L02 | Lucas | L01, C01, N01 | Pendiente | - | - | - | - |
-| E02 | Emilio | G02, C01, E01 | Implementada y verificada localmente; pendiente de PR | fix/emilio-api-transversal | - | - | 116 pruebas no SQL y 62 SQL aprobadas; navegador y dependencias verificados; evidencia-api-transversal.md |
-| N03 | Nacho | N02, C01, L02 | Pendiente | - | - | - | - |
-| L03 | Lucas | L02 | Pendiente | - | - | - | - |
-| N04 | Nacho (implementación), Emilio (validación) | N03, E01, L03 | Integrada y validada localmente; revisión de evidencia pendiente | test/nacho-migraciones-preservacion | #34 | af360f1 | 226 pruebas aprobadas; restauración, preservación de datos y consulta por API verificadas en copia sintética |
-| L04 | Lucas | L03, N03, E01 | Pendiente | - | - | - | - |
+| C03 | Charly | C01, C02 | Integrada | fix/charly-bajas-relacionadas | #25 | a39cfab | 93 pruebas sin SQL y 26 SQL aprobadas; carrera baja/reserva comprobada después en [C04](evidencia-aceptacion.md) |
+| N02 | Nacho | N01, incluido en el mismo PR | Integrada | feature/nacho-reglas-mensuales | #29 | 521240d | Planificación mensual; regresión de agenda en [#36](https://github.com/emiliolj1/dsw2026-tpi/pull/36) (`102e50e`) y recorrido en [C04](evidencia-aceptacion.md) |
+| L02 | Lucas | L01, C01, N01 | Integrada | fix/lucas-reservas-atomicas | #30 | 1e9ae52 | [Errores de reserva y cancelación](errores-citas.md); concurrencia y rollback cubiertos en [L04](evidencia-citas.md) |
+| E02 | Emilio | G02, C01, E01 | Integrada | fix/emilio-api-transversal | #28 | 40a114c | 116 pruebas sin SQL y 62 SQL aprobadas; [evidencia de API transversal](evidencia-api-transversal.md) |
+| N03 | Nacho | N02, C01, L02 | Integrada | fix/nacho-agenda-concurrente | #31 | 5ce0cc0 | [Casos SQL de agenda y reservas](evidencia-n03.md); evidencia posterior en [L04](evidencia-citas.md) y [N04](evidencia-migraciones.md) |
+| L03 | Lucas | L02 | Integrada | feature/lucas-estados-citas | #32 | 5944f13 | [PATCH de estados](estados-citas.md); pruebas de estados y autorización en [L04](evidencia-citas.md) |
+| N04 | Nacho (implementación), Emilio (validación) | N03, E01, L03 | Integrada | test/nacho-migraciones-preservacion; test/emilio-validacion-n04 | #34 y #35 | af360f1 y d14590d | 226 pruebas aprobadas; [preservación y consulta HTTP en copia sintética](evidencia-migraciones.md) |
+| L04 | Lucas | L03, N03, E01 | Integrada | test/lucas-citas-cierre | #33 | 9ca974a | 136 pruebas sin SQL y 89 SQL aprobadas; [evidencia de citas](evidencia-citas.md) |
 | C04 | Charly | E01, E02, C03, N04, L04 | Integrada | test/charly-aceptacion-backend | #37 | 9cc66b5 | 136 pruebas sin SQL, 93 SQL y 1 de rendimiento aprobadas; máximo 238,16 ms en LocalDB; ver evidencia-aceptacion.md y rendimiento.md |
-| C05 | Charly | C04, N04 | Pendiente | - | - | - | - |
-| E03 | Emilio | N04, L04, C05, E01, E02 | Pendiente | docs/emilio-cierre-backend | - | - | - |
+| C05 | Charly | C04, N04 | Integrada | docs/charly-entrega-backend | #38 | dd89963 | [Guía frontend](integracion-frontend.md) y [verificación del recorrido HTTP](cierre-backend.md#entrega-c05) |
+| E03 | Emilio | N04, L04, C05, E01, E02 | Pendiente de revisión e integración | docs/emilio-cierre-backend | - | - | [Cierre documental y verificaciones](cierre-backend.md) |
 
 ## Entrega conjunta G01 + G02
 
@@ -103,11 +94,8 @@ Estado actualizado al 15/10/2026:
 - Bloqueo, timeout y rollback verificados con SQL Server real en C01,
   integrado mediante PR #22 y SHA 1645370.
 
-Pendientes:
-- Adopción del reloj y alcance por los módulos en sus tareas asignadas.
-
-La publicación de la fábrica no implica que las operaciones existentes
-ya estén protegidas por el bloqueo compartido.
+La adopción del reloj y el alcance se comprueba en las tareas de cada
+módulo y en la [aceptación integrada C04](evidencia-aceptacion.md).
 
 ## Entrega C01 — Infraestructura SQL Server
 
@@ -170,11 +158,11 @@ Configuración:
 
 Límites:
 - La prueba de timeout verifica ClinicalWriteConflictException.
-  Su traducción a HTTP 409 se verificará en la integración correspondiente.
-- Las carreras de reserva, agenda y bajas siguen asignadas a las tareas
-  de los módulos y a la aceptación integrada.
+  N03 cubre su traducción a HTTP 409 en el PUT de agenda.
+- Las carreras de reserva, agenda y bajas se cubren en los módulos
+  y en la [aceptación integrada](evidencia-aceptacion.md).
 - C01 no constituye una medición de rendimiento.
-- Las migraciones futuras de N04 deberán verificarse al integrarse.
+- La validación posterior de N04 se registra en [evidencia-migraciones.md](evidencia-migraciones.md).
 - La ejecución conjunta de pruebas SQL y no SQL en un único proceso
   no fue acreditada; se verificaron mediante comandos separados.
 
@@ -277,11 +265,8 @@ Verificaciones:
 - Reasignación permitida sin reservas futuras y posterior baja
   de la especialidad anterior.
 
-Pendiente de integración cruzada:
-- Carrera entre baja de médico y reserva simultánea.
-- Ejecutarla en C04 cuando L02 utilice el alcance común.
-- C03 no demuestra todavía la serialización conjunta con el módulo
-  de reservas pendiente de Lucas.
+La carrera entre baja de médico y reserva simultánea se verificó después
+en [C04](evidencia-aceptacion.md), con L02 integrado.
 
 Sin nuevas migraciones ni modificaciones de los módulos de agenda
 y citas. No se cambió GetMonthlyPlanning.
@@ -293,9 +278,8 @@ y citas. No se cambió GetMonthlyPlanning.
 - PR integrado: #26.
 - SHA de merge: 82e2f0e40f584b9b035cab625cc4be6901fd949e.
 - La integración del código fue comprobada en GitHub.
-- Falta registrar la evidencia de ejecución específica de Lucas.
-- No se presenta esa evidencia pendiente como una prueba aprobada.
-- L02 mantiene su dependencia de N01, todavía pendiente.
+- No hay ejecución independiente de L01 registrada. Para la validación
+  posterior del módulo, ver [L04](evidencia-citas.md) y [C04](evidencia-aceptacion.md).
 
 ## E01 — Cierre de autenticación
 
@@ -311,7 +295,7 @@ y citas. No se cambió GetMonthlyPlanning.
 - Fecha de verificación local: 2026-10-25.
 - Rama: fix/emilio-api-transversal.
 - Base: a9d3930ef23846c1b9f761165e116f65b8f41551.
-- Estado: implementación local verificada; pendiente de PR e integración.
+- Estado: integrada mediante PR #28, SHA de merge `40a114c`.
 - Regresión no SQL: 116 aprobadas, 0 fallidas, 0 omitidas.
 - Regresión SQL: 62 aprobadas, 0 fallidas, 0 omitidas.
 - Compilación final sin advertencias reportadas.
@@ -321,27 +305,22 @@ y citas. No se cambió GetMonthlyPlanning.
   dependencias directas y transitivas el 2026-10-25.
 - Detalle: [evidencia-api-transversal.md](evidencia-api-transversal.md).
 - Calendario acordado: [calendario-operativo.md](calendario-operativo.md).
-- E02, N04 y L04 ya están integradas. El resultado de la aceptación C04
-  se verifica por separado.
 
 ## N04 — Preservación de datos al migrar
 
 - Implementación: Nacho, PR #34 (`af360f1`).
-- Validación local: Emilio, 2026-11-11, sobre el mismo SHA integrado.
+- Validación local: Emilio, 2026-11-11, sobre `af360f1`.
+- Evidencia integrada mediante PR #35 (`d14590d`).
 - Dependencias integradas: E01 (#27), N03 (#31) y L03 (#32).
 - Regresión: 136 pruebas sin SQL y 90 SQL aprobadas, sin fallos ni omisiones.
 - Sobre una copia sintética restaurada se preservaron inventario, IDs, estados,
   vínculos de identidad y RowVersion. La API recuperó la misma reserva.
 - Detalle y límites: [evidencia-migraciones.md](evidencia-migraciones.md).
 
-## Pendientes transversales conocidos
+## Seguimiento operativo
 
-- Las advertencias NU1902/NU1903 de Pkcs 9.0.4 se resolvieron
-  localmente en E02 fijando Pkcs 9.0.21. La corrección aún debe
-  integrarse mediante el PR de E02.
-- Confirmar cierres adicionales del centro y su aplicación a la agenda
-  en N02 y C04; actualizar el calendario antes de operar en 2027.
-- Registrar la evidencia específica pendiente de L01.
-- Mantener actualizados PR, SHA y evidencias al integrar cada tarea.
-- No presentar pruebas omitidas o no ejecutadas como aprobadas.
-- Conservar los datos existentes y utilizar bases exclusivas de pruebas.
+- Emilio coordina la confirmación de cierres adicionales, la comprobación
+  de su aplicación y la carga del calendario de 2027. Ver
+  [calendario operativo](calendario-operativo.md).
+- E03 se registra como integrada una vez fusionado su PR; añadir aquí el
+  enlace y el SHA de merge después de la integración.

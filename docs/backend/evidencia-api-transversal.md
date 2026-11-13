@@ -9,8 +9,9 @@
 - Rama local: fix/emilio-api-transversal.
 - Base: a9d3930ef23846c1b9f761165e116f65b8f41551.
 - Motor SQL: LocalDB, instancia MSSQLLocalDB.
-- Estado: implementación local verificada; pendiente de PR e integración.
-- No hay todavía número de PR ni SHA integrado para E02.
+- Integración: [PR #28](https://github.com/emiliolj1/dsw2026-tpi/pull/28),
+  merge `40a114c` en `development`. Las pruebas de este documento
+  corresponden a la verificación local de E02.
 
 ## Regresión ejecutada por Emilio
 
@@ -140,17 +141,13 @@ las capturas manuales corresponden a la consola del navegador.
 
 El calendario nacional 2026 acordado, sus fuentes y responsable están
 en [calendario-operativo.md](calendario-operativo.md).
-Debe contrastarse la lista documentada con NonWorkingDays:Dates
-en el diff final de configuración.
+En E03 se cotejó la lista con `NonWorkingDays:Dates` en `dd89963`: las
+17 fechas coinciden.
 
-Falta confirmar cierres adicionales propios del centro y verificar
-la exclusión de fechas en la planificación mensual de N02.
-Se debe preparar el calendario 2027 antes de operar en ese año.
+El seguimiento de los cierres adicionales, la comprobación de un feriado
+en agenda y la carga de 2027 se mantiene en el
+[calendario operativo](calendario-operativo.md).
 
-La carga de Swagger no acredita una revisión completa de todos
-los esquemas y ejemplos de los módulos todavía pendientes.
-E02 no acredita la aceptación integrada ni la medición de rendimiento C04.
-
-Antes del commit se debe revisar el diff completo y ejecutar
-git diff --check. Después corresponde PR hacia development y revisión;
-el número y SHA se registran cuando existan.
+La carga de Swagger no acredita una revisión completa de todos los
+esquemas. La [aceptación integrada](evidencia-aceptacion.md) y el
+[rendimiento](rendimiento.md) se verificaron por separado en C04.

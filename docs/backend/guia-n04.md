@@ -107,7 +107,8 @@ N04 adicional solo después de acordar el modelo y la estrategia de respaldo.
   preservados al aplicar N01.
 - Login real del paciente y consulta de la reserva preexistente: HTTP 200.
 - Implementación integrada mediante PR #34, merge `af360f1`.
-- Revisión de la evidencia por el equipo: pendiente.
+- Evidencia integrada mediante [PR #35](https://github.com/emiliolj1/dsw2026-tpi/pull/35),
+  merge `d14590d`.
 
 La prueba se realizó sobre Identity ya normalizado a GUID. Cualquier
 conversión de bases legadas requiere un procedimiento validado aparte.
