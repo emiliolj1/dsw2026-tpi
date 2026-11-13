@@ -1,8 +1,122 @@
-@Dsw2026Tpi.Api_HostAddress = https://localhost:7001
-@accessToken = 
+@baseUrl = http://localhost:5278
+@adminEmail = admin@example.test
+@adminPassword = REEMPLAZAR_CON_CLAVE_LOCAL
+@patientEmail = carlitos@gmail.com
+@patientDni = 12345678
+@adminToken = REEMPLAZAR_CON_TOKEN_ADMIN
+@patientToken = REEMPLAZAR_CON_TOKEN_PACIENTE
+@specialtyId = 00000000-0000-0000-0000-000000000000
+@doctorId = 00000000-0000-0000-0000-000000000000
+@availabilitySlotId = 00000000-0000-0000-0000-000000000000
+@appointmentId = 00000000-0000-0000-0000-000000000000
+@planningDay = LUNES
+@planningStart = 09:00
+@planningEnd = 10:00
 
-### Health Check
-GET {{Dsw2026Tpi.Api_HostAddress}}/health-check
-Accept: application/json
+# Ejecutar una solicitud a la vez, en orden, sobre una base local de desarrollo.
+# Usar el email y la contraseña del administrador configurado en esa instalación.
+# Copiar los tokens sin comillas y sin el prefijo Bearer.
+# Antes de hacer commit, restaurar los marcadores de contraseña, tokens e IDs.
 
-###
+### 1. Login de administrador — 200; copiar token a adminToken
+POST {{baseUrl}}/api/auth/admin/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+### 2. Login de paciente — 200; copiar token a patientToken
+POST {{baseUrl}}/api/auth/patient/login
+Content-Type: application/json
+
+{
+  "email": "{{patientEmail}}",
+  "dni": {{patientDni}}
+}
+
+### 3. Health check autenticado — 200
+GET {{baseUrl}}/health-check
+Authorization: Bearer {{adminToken}}
+
+### 4. Crear especialidad — 201; copiar id a specialtyId
+POST {{baseUrl}}/api/specialties
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Cardiología C05",
+  "description": "Especialidad sintética para la demostración local"
+}
+
+### 5. Crear médico — 201; copiar el id principal a doctorId
+POST {{baseUrl}}/api/doctors
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Médico de demostración",
+  "licenseNumber": "MP-C05-001",
+  "specialtyId": "{{specialtyId}}"
+}
+
+### 6. Crear planificación — 201
+# Elegir un día y un horario futuro del mes vigente que no sea feriado.
+# Usar el formato HH:mm, por ejemplo 09:00.
+POST {{baseUrl}}/api/availabilities
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "doctorId": "{{doctorId}}",
+  "days": [
+    {
+      "day": "{{planningDay}}",
+      "startTime": "{{planningStart}}",
+      "endTime": "{{planningEnd}}"
+    }
+  ]
+}
+
+### 7. Consultar turnos libres — 200; copiar el availabilitySlotId de un turno
+GET {{baseUrl}}/api/availabilities?doctorId={{doctorId}}
+Authorization: Bearer {{patientToken}}
+
+### 8. Reservar un turno — 201; copiar appointmentsId a appointmentId
+POST {{baseUrl}}/api/appointments
+Authorization: Bearer {{patientToken}}
+Content-Type: application/json
+
+{
+  "doctorId": "{{doctorId}}",
+  "availabilitySlotId": "{{availabilitySlotId}}",
+  "patient": {
+    "dni": {{patientDni}}
+  },
+  "reason": "Consulta sintética de demostración"
+}
+
+### 9. Consultar mis citas — 200; verificar que figure la cita BOOKED
+GET {{baseUrl}}/api/appointments/patient?dni={{patientDni}}
+Authorization: Bearer {{patientToken}}
+
+### 10. Buscar la cita como administrador — 200; verificar que aparezca en data
+GET {{baseUrl}}/api/appointments/search?doctorId={{doctorId}}&status=BOOKED&pageSize=10&pageIndex=0
+Authorization: Bearer {{adminToken}}
+
+### 11. Cancelar la cita — 200 con el texto ok
+DELETE {{baseUrl}}/api/appointments/{{appointmentId}}
+Authorization: Bearer {{patientToken}}
+
+### 12. Consultar turnos libres — 200; verificar que reaparezca el mismo availabilitySlotId
+GET {{baseUrl}}/api/availabilities?doctorId={{doctorId}}
+Authorization: Bearer {{patientToken}}
+
+### 13. Cerrar sesión del paciente — 200 con el texto ok
+POST {{baseUrl}}/api/auth/logout
+Authorization: Bearer {{patientToken}}
+
+### 14. Verificar la revocación — 401 esperado con el mismo token del paso 13
+GET {{baseUrl}}/api/appointments/patient?dni={{patientDni}}
+Authorization: Bearer {{patientToken}}
