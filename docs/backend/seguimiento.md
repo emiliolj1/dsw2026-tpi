@@ -70,7 +70,7 @@ en development.
 | L03 | Lucas | L02 | Pendiente | - | - | - | - |
 | N04 | Nacho (implementación), Emilio (validación) | N03, E01, L03 | Integrada y validada localmente; revisión de evidencia pendiente | test/nacho-migraciones-preservacion | #34 | af360f1 | 226 pruebas aprobadas; restauración, preservación de datos y consulta por API verificadas en copia sintética |
 | L04 | Lucas | L03, N03, E01 | Pendiente | - | - | - | - |
-| C04 | Charly | E01, E02, C03, N04, L04 | Implementada y verificada localmente; pendiente de PR | test/charly-aceptacion-backend | - | - | 136 pruebas sin SQL, 93 SQL y 1 de rendimiento aprobadas; máximo 238,16 ms; ver evidencia-aceptacion.md y rendimiento.md |
+| C04 | Charly | E01, E02, C03, N04, L04 | Integrada | test/charly-aceptacion-backend | #37 | 9cc66b5 | 136 pruebas sin SQL, 93 SQL y 1 de rendimiento aprobadas; máximo 238,16 ms en LocalDB; ver evidencia-aceptacion.md y rendimiento.md |
 | C05 | Charly | C04, N04 | Pendiente | - | - | - | - |
 | E03 | Emilio | N04, L04, C05, E01, E02 | Pendiente | docs/emilio-cierre-backend | - | - | - |
 

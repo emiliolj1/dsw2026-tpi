@@ -21,7 +21,8 @@ API REST desarrollada con ASP.NET Core para administrar especialidades, médicos
 - Consulta de slots reservables por médico.
 - Reserva y cancelación de citas con control de concurrencia.
 - Consulta de citas activas del paciente.
-- Búsqueda administrativa de citas por fecha, especialidad, médico y DNI.
+- Búsqueda administrativa de citas por fecha, especialidad, médico, DNI y estado.
+- Registro administrativo de citas atendidas o ausentes.
 - Respuestas de error uniformes, logging y rate limiting.
 
 ## Tecnologías utilizadas
@@ -35,7 +36,7 @@ API REST desarrollada con ASP.NET Core para administrar especialidades, médicos
 - JWT Bearer
 - Swagger / OpenAPI
 - Serilog
-- xUnit, Moq y EF Core InMemory
+- xUnit, Moq y pruebas de integración con EF Core InMemory y SQL Server LocalDB
 
 ## Estructura de la solución
 
@@ -81,25 +82,25 @@ Para utilizar otra instancia de SQL Server, se puede reemplazar la configuració
 
 ### JWT y administrador inicial
 
-Antes de ejecutar la API, configurar una clave JWT segura y las credenciales del administrador inicial. La contraseña debe tener al menos ocho caracteres e incluir mayúscula, minúscula, número y carácter no alfanumérico.
+Antes de ejecutar la API, configurar una clave JWT segura de al menos 32 bytes UTF-8 y las credenciales del administrador inicial. La contraseña debe tener al menos ocho caracteres e incluir mayúscula, minúscula, número y carácter no alfanumérico.
 
 Desde el **Explorador de soluciones** de Visual Studio:
 
 1. Hacer clic derecho sobre el proyecto `Dsw2026Tpi.Api`.
 2. Seleccionar **Administrar secretos de usuario**.
-3. Reemplazar el contenido de `secrets.json` por una configuración local como la siguiente:
+3. Agregar estos valores a `secrets.json`, reemplazando los marcadores por una clave JWT propia y la contraseña local del administrador:
 
 ```json
 {
   "Jwt": {
-    "Key": "reemplazar-por-una-clave-segura-de-al-menos-32-caracteres",
+    "Key": "REEMPLAZAR_CON_CLAVE_JWT_LOCAL",
     "Issuer": "Dsw2026Tpi.Api",
     "Audience": "Dsw2026Tpi.ApiUsers",
     "ExpiresInMinutes": 60
   },
   "InitialAdmin": {
-    "Email": "admin@tpi.com",
-    "Password": "Admin123!"
+    "Email": "admin@example.test",
+    "Password": "REEMPLAZAR_CON_CLAVE_LOCAL"
   }
 }
 ```
@@ -141,10 +142,14 @@ Update-Database -Context Dsw2026TpiDbContext -Project Dsw2026Tpi.Data -StartupPr
 Como alternativa, si se trabaja desde una terminal con `dotnet-ef`, pueden utilizarse los comandos equivalentes:
 
 ```bash
+sqllocaldb start MSSQLLocalDB
+export ASPNETCORE_ENVIRONMENT=Development
 dotnet ef database update --context AuthenticationDbContext --project Dsw2026Tpi.Data --startup-project Dsw2026Tpi.Api
 
 dotnet ef database update --context Dsw2026TpiDbContext --project Dsw2026Tpi.Data --startup-project Dsw2026Tpi.Api
 ```
+
+Para una base con datos previos, consultar la [guía de migraciones y preservación](docs/backend/migraciones.md) antes de aplicar cambios. La validación se realiza sobre una copia.
 
 ## Ejecución
 
@@ -160,7 +165,7 @@ En el perfil HTTP de desarrollo:
 
 Swagger solo se habilita en el ambiente `Development`.
 
-Desde Swagger UI se pueden inspeccionar los contratos y probar los endpoints con **Try it out**. Visual Studio también permite ejecutar archivos `.http`, aunque Swagger es el recorrido principal documentado para este proyecto.
+Desde Swagger UI se pueden inspeccionar los contratos y probar los endpoints con **Try it out**. Para ejecutar el recorrido de inicio de sesión, catálogo, agenda y reserva, abrir [Dsw2026Tpi.Api.http](Dsw2026Tpi.Api/Dsw2026Tpi.Api.http) en Visual Studio. Ejecutar una solicitud a la vez y completar las variables con los tokens e identificadores de las respuestas. Usar datos de desarrollo y conservar los marcadores de ejemplo en el archivo versionado.
 
 ## Autenticación y uso del token
 
@@ -180,8 +185,8 @@ Content-Type: application/json
 
 ```json
 {
-  "email": "admin@tpi.com",
-  "password": "Admin123!"
+  "email": "admin@example.test",
+  "password": "REEMPLAZAR_CON_CLAVE_LOCAL"
 }
 ```
 
@@ -199,7 +204,7 @@ Content-Type: application/json
 }
 ```
 
-Si la combinación de email y DNI todavía no existe, el paciente y su identidad se crean automáticamente. La respuesta de ambos logins tiene la siguiente estructura:
+Si el email y el DNI todavía no están registrados, el paciente y su identidad se crean automáticamente. En los siguientes ingresos se debe usar la misma combinación. Ambos logins devuelven `token` y `role`. Por ejemplo, para el administrador:
 
 ```json
 {
@@ -208,7 +213,7 @@ Si la combinación de email y DNI todavía no existe, el paciente y su identidad
 }
 ```
 
-Para consumir endpoints protegidos, enviar el token en la cabecera:
+Para el paciente, `role` es `PACIENTE`. Para consumir endpoints protegidos, enviar el token en la cabecera:
 
 ```http
 Authorization: Bearer jwt-token
@@ -250,8 +255,8 @@ Ejemplo de alta o modificación:
 
 | Método | Endpoint | Acceso | Descripción |
 |---|---|---|---|
-| GET | `/api/doctors?pageSize={n}&pageIndex={n}&name={texto}` | Administrador o Paciente | Lista médicos activos con filtro y paginación |
-| GET | `/api/doctors/{id}/availabilities` | Administrador | Obtiene la planificación mensual agrupada del médico |
+| GET | `/api/doctors?pageSize={n}&pageIndex={n}&name={texto}&specialtyId={id}` | Administrador o Paciente | Lista médicos activos; `name` y `specialtyId` son filtros opcionales |
+| GET | `/api/doctors/{id}/availabilities` | Administrador | Obtiene las reglas de planificación del médico para el mes vigente |
 | POST | `/api/doctors` | Administrador | Crea un médico |
 | PUT | `/api/doctors/{id}` | Administrador | Actualiza un médico |
 | DELETE | `/api/doctors/{id}` | Administrador | Elimina lógicamente un médico |
@@ -262,7 +267,7 @@ Ejemplo de alta o modificación:
 {
   "name": "Ana Pérez",
   "licenseNumber": "MP-12345",
-  "specialityId": "00000000-0000-0000-0000-000000000000"
+  "specialtyId": "00000000-0000-0000-0000-000000000000"
 }
 ```
 
@@ -272,7 +277,7 @@ Ejemplo de alta o modificación:
 |---|---|---|---|
 | GET | `/api/availabilities?doctorId={id}` | Paciente | Lista los slots futuros disponibles del médico |
 | POST | `/api/availabilities` | Administrador | Crea la planificación mensual faltante |
-| PUT | `/api/availabilities` | Administrador | Reemplaza los slots futuros no reservados del mes |
+| PUT | `/api/availabilities` | Administrador | Reemplaza las reglas del mes vigente y recalcula los turnos libres futuros |
 
 Los días pueden escribirse en español o inglés, sin distinción de mayúsculas, y los horarios deben utilizar el formato `HH:mm`:
 
@@ -303,15 +308,16 @@ El sistema genera intervalos de 30 minutos, excluye horarios pasados y días no 
 | POST | `/api/appointments` | Paciente | Reserva un slot disponible |
 | GET | `/api/appointments/patient?dni={dni}` | Paciente | Lista las citas activas del paciente autenticado |
 | DELETE | `/api/appointments/{id}` | Paciente | Cancela una cita propia y libera el slot |
-| GET | `/api/appointments?date={yyyy-MM-dd}` | Administrador | Consulta las citas de una fecha |
-| GET | `/api/appointments/search?specialtyId={id}&doctorId={id}&dni={dni}&date={yyyy-MM-dd}&pageSize={n}&pageIndex={n}` | Administrador | Realiza una búsqueda combinada y paginada |
+| GET | `/api/appointments?date={yyyy-MM-dd}&status={estado}&pageSize={n}&pageIndex={n}` | Administrador | Consulta las citas de una fecha, con paginación y filtro opcional de estado |
+| GET | `/api/appointments/search?specialtyId={id}&doctorId={id}&dni={dni}&date={yyyy-MM-dd}&status={estado}&pageSize={n}&pageIndex={n}` | Administrador | Realiza una búsqueda paginada con filtros opcionales combinables |
+| PATCH | `/api/appointments/{id}/status` | Administrador | Marca como `ATTENDED` o `NO_SHOW` una cita `BOOKED` cuyo turno ya terminó |
 
 Ejemplo de reserva:
 
 ```json
 {
   "doctorId": "00000000-0000-0000-0000-000000000000",
-  "availabilityId": "00000000-0000-0000-0000-000000000000",
+  "availabilitySlotId": "00000000-0000-0000-0000-000000000000",
   "patient": {
     "dni": 12345678
   },
@@ -321,6 +327,16 @@ Ejemplo de reserva:
 
 La reserva valida que el paciente autenticado coincida con el DNI enviado, que el slot pertenezca al médico, sea futuro y se encuentre disponible. El control transaccional y de concurrencia evita reservas duplicadas.
 
+Para identificar la cita en la respuesta, usar `appointmentsId`. El estado se devuelve en `appointmentsStatus`. Los filtros de estado admiten `BOOKED`, `CANCELLED`, `ATTENDED` y `NO_SHOW`.
+
+Ejemplo de actualización de estado:
+
+```json
+{
+  "status": "ATTENDED"
+}
+```
+
 ### Estado de la API
 
 | Método | Endpoint | Acceso | Descripción |
@@ -329,9 +345,8 @@ La reserva valida que el paciente autenticado coincida con el DNI enviado, que e
 
 ## Códigos HTTP principales
 
-- `200 OK`: consulta o autenticación exitosa.
-- `201 Created`: recurso o cita creados.
-- `204 No Content`: actualización o cancelación exitosa sin cuerpo de respuesta.
+- `200 OK`: consulta, autenticación o actualización exitosa. Las bajas de catálogo, la cancelación de citas y el logout devuelven `ok` como `text/plain`.
+- `201 Created`: recurso, planificación o cita creados.
 - `400 Bad Request`: datos inválidos o incumplimiento de una regla de negocio.
 - `401 Unauthorized`: token ausente, inválido o credenciales incorrectas.
 - `403 Forbidden`: el usuario no posee el rol requerido.
@@ -380,28 +395,35 @@ Los archivos rotan por día o al alcanzar 10 MB y se conservan hasta 30 archivos
 
 ## Compilación y pruebas
 
-Visual Studio compila automáticamente antes de ejecutar. También puede compilarse manualmente desde **Compilar > Compilar solución**.
-
-Para ejecutar las pruebas automatizadas:
-
-1. Ir a **Prueba > Explorador de pruebas**.
-2. Seleccionar **Ejecutar todas las pruebas**.
-3. Verificar que el panel informe todas las pruebas aprobadas, sin fallos ni pruebas omitidas.
-
-El proyecto cuenta con pruebas unitarias y de integración para servicios, persistencia, autenticación, autorización, revocación de tokens y rate limiting.
-
-Los comandos equivalentes desde una terminal son:
+Desde la raíz del repositorio:
 
 ```bash
-dotnet build --nologo
-dotnet test --nologo --verbosity minimal
+dotnet restore
+dotnet build --no-restore --nologo
+dotnet test --no-build --filter "Category!=SqlServer" --nologo
 ```
+
+Para la regresión SQL y la medición de rendimiento, iniciar LocalDB y configurar `DSW2026_TEST_SQL_CONNECTION` según la [guía de pruebas SQL](docs/backend/pruebas-sql.md). Ejecutar cada corrida por separado:
+
+```bash
+dotnet test --no-build --filter "Category=SqlServer&Purpose!=Performance" --nologo
+dotnet test --no-build --filter "Purpose=Performance" --nologo
+```
+
+Las suites cubren servicios, persistencia, autenticación, autorización, concurrencia y el recorrido de aceptación. Para consultar los resultados y el alcance de cada validación, ver la [evidencia de aceptación](docs/backend/evidencia-aceptacion.md) y el [informe de rendimiento](docs/backend/rendimiento.md).
 
 Verificar problemas de formato antes de crear un commit:
 
 ```bash
 git diff --check
 ```
+
+## Documentación del backend
+
+- [Contrato v1.7 de la API](docs/backend/contrato-v17.md).
+- [Migraciones y preservación de datos](docs/backend/migraciones.md).
+- [Pruebas de integración con SQL Server](docs/backend/pruebas-sql.md).
+- [Seguimiento de la entrega](docs/backend/seguimiento.md).
 
 ## Estrategia de ramas
 
@@ -412,3 +434,5 @@ git diff --check
 - `docs/*`: documentación.
 
 Las ramas temporales se integran en `development` mediante Pull Requests y no deben eliminarse.
+
+- [Guía de integración para frontend](docs/backend/integracion-frontend.md).
