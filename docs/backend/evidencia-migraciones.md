@@ -64,4 +64,4 @@ y `n04-despues.GqE7AV`.
 
 La API se inició contra la copia migrada. `POST /api/auth/patient/login` respondió 200 y devolvió un JWT. Con ese JWT, `GET /api/appointments/patient` respondió 200 y recuperó la reserva `BOOKED` con los mismos identificadores de cita y turno. Los JWT, secretos, archivos de respaldo y TRX permanecen fuera de Git.
 
-El escenario no valida una conversión histórica de Identity desde claves string a GUID ni acredita la aceptación integrada C04. La revisión del equipo sigue pendiente.
+El escenario no valida una conversión histórica de Identity desde claves string a GUID ni acredita la aceptación integrada C04. La evidencia se incorporó a `development` mediante el [PR #35](https://github.com/emiliolj1/dsw2026-tpi/pull/35) (`d14590d`).

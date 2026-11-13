@@ -59,15 +59,11 @@ dotnet test Dsw2026Tpi.Tests/Dsw2026Tpi.Tests.csproj \
   --logger 'console;verbosity=normal'
 ```
 
-## Evidencia que falta completar tras la ejecución
+## Integración y evidencia posterior
 
-- [ ] `dotnet build` finalizó correctamente (fecha, SHA, versión de SDK).
-- [ ] Las 3 pruebas nuevas finalizaron correctamente sobre SQL Server real.
-- [ ] La regresión SQL indicada finalizó correctamente.
-- [ ] Se guardó un resumen de los resultados sin contraseñas, tokens ni datos
-      personales (solo conteos, resultados y errores sanitizados).
-- [ ] El PR se abrió desde `fix/nacho-agenda-concurrente` hacia `development`.
-- [ ] Un revisor aprobó y se realizó el merge (no afirmar antes de confirmarlo).
-
-**Estado al generar este archivo:** código agregado, ejecución real pendiente.
-No se hizo ninguna operación sobre una base compartida.
+- Integración: [PR #31](https://github.com/emiliolj1/dsw2026-tpi/pull/31),
+  merge `5ce0cc0` en `development`.
+- La [evidencia de L04](evidencia-citas.md) registra el caso de reserva
+  frente al PUT de agenda en la suite SQL. La regresión SQL de
+  [N04](evidencia-migraciones.md) se ejecutó con N03 integrado.
+- No se registra aquí una corrida independiente del PR #31.

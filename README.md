@@ -299,7 +299,10 @@ Los días pueden escribirse en español o inglés, sin distinción de mayúscula
 }
 ```
 
-El sistema genera intervalos de 30 minutos, excluye horarios pasados y días no laborables, y evita solapamientos. La actualización conserva los slots reservados y los horarios que ya pasaron.
+Las respuestas de planificación normalizan `day` al español en mayúsculas
+(por ejemplo, `MIÉRCOLES`). El sistema genera intervalos de 30 minutos, excluye
+horarios pasados y días no laborables, y evita solapamientos. La actualización
+conserva las reservas y el historial. Ver el [calendario operativo](docs/backend/calendario-operativo.md).
 
 ### Citas
 
@@ -420,6 +423,8 @@ git diff --check
 
 ## Documentación del backend
 
+- [Cierre del backend y evidencias](docs/backend/cierre-backend.md).
+- [Guía de integración para frontend](docs/backend/integracion-frontend.md).
 - [Contrato v1.7 de la API](docs/backend/contrato-v17.md).
 - [Migraciones y preservación de datos](docs/backend/migraciones.md).
 - [Pruebas de integración con SQL Server](docs/backend/pruebas-sql.md).
@@ -434,5 +439,3 @@ git diff --check
 - `docs/*`: documentación.
 
 Las ramas temporales se integran en `development` mediante Pull Requests y no deben eliminarse.
-
-- [Guía de integración para frontend](docs/backend/integracion-frontend.md).

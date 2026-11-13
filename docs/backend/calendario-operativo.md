@@ -12,7 +12,7 @@
 
 Se acordó cargar feriados nacionales de Argentina.
 La lista no implica que estén confirmados todos los cierres del centro.
-Debe contrastarse con la configuración antes de integrar E02.
+E03 cotejó las 17 fechas con `NonWorkingDays:Dates` en `dd89963`: coinciden.
 
 ## Fechas acordadas
 
@@ -65,10 +65,13 @@ Las fechas artificiales usadas en tests no se trasladan al calendario real.
 
 - Revisar nuevas disposiciones oficiales antes de generar planificación.
 - Mantener sincronizados configuración y documento mediante PR.
-- N02 debe probar que no se generan slots en las fechas excluidas.
-- C04 debe verificar el calendario operativo integrado.
+- N02 omite las fechas configuradas al generar slots. La aceptación C04
+  y el recorrido C05 no documentan una comprobación específica con un feriado.
+- Para comprobar el calendario operativo, usar una base aislada, un reloj
+  de prueba previo a un feriado configurado y una regla para ese día de la
+  semana. Verificar que no haya slots en la fecha excluida y que sí se
+  generen en otra fecha hábil del mismo mes con la misma regla.
 - Cargar y revisar 2027 antes de generar planificación de ese año.
 - La ausencia de fechas de otro año no significa que ese año no tenga feriados.
 
-Las 178 pruebas aprobadas de E02 no sustituyen esas verificaciones
-de la nueva planificación mensual.
+El cotejo documental no sustituye esa comprobación por API o contra SQL.

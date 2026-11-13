@@ -24,6 +24,8 @@ indica que el usuario debe volver a iniciar sesión.
 |---|---|---|---|
 | Consultar catálogos | Ambos | `GET /api/specialties` y `GET /api/doctors` | `200`, listados paginados |
 | Crear planificación | Administrador | `POST /api/availabilities` | `201`; recibe `doctorId` y `days` con rangos `HH:mm` |
+| Consultar planificación | Administrador | `GET /api/doctors/{doctorId}/availabilities` | `200`, array de reglas del mes vigente |
+| Reemplazar planificación | Administrador | `PUT /api/availabilities` | `200`; `days: []` retira los turnos libres futuros y conserva reservas e historia |
 | Consultar turnos libres | Paciente | `GET /api/availabilities?doctorId={id}` | `200`, lista de turnos; `[]` si no hay ninguno |
 | Reservar | Paciente | `POST /api/appointments` | `201`, cita `BOOKED` |
 | Consultar mis citas | Paciente | `GET /api/appointments/patient?dni={dni}` | `200`, citas activas del paciente |
@@ -43,6 +45,11 @@ los devueltos por la API y usar el DNI del paciente autenticado:
 }
 ```
 
+En planificación, las respuestas de POST y PUT tienen `doctorId`, `year`,
+`month` y `days`; el GET administrativo devuelve el array de reglas
+directamente. Cada regla tiene su propio `id` y devuelve `day` en español
+en mayúsculas (por ejemplo, `MIÉRCOLES`). La entrada admite también inglés.
+
 - `specialtyId`: especialidad; se usa al crear o filtrar médicos.
 - `doctorId`: médico; se usa para consultar su disponibilidad.
 - `availabilitySlotId`: turno libre; se envía al reservar.
@@ -52,8 +59,9 @@ los devueltos por la API y usar el DNI del paciente autenticado:
 ## Manejo de errores
 
 Leer `errorCode` y `message` del JSON de error. Usar `details` para
-mostrar errores por campo cuando esté presente. Ante un `409` al reservar,
-actualizar la lista de turnos antes de ofrecer otro intento. Ante un `429`,
+mostrar errores por campo cuando esté presente. Si una reserva falla con
+`404 ENTITY_NOTFOUND` porque el turno se retiró, o con `409` porque ya no
+está disponible, refrescar la lista antes de ofrecer otro intento. Ante un `429`,
 informar el límite de solicitudes y evitar reintentos inmediatos.
 
 Ver el [contrato v1.7](contrato-v17.md) y el
