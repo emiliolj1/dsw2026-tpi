@@ -10,10 +10,14 @@ namespace Dsw2026Tpi.Data.Repositories
     public class AppointmentPersistenceEf : IAppointmentPersistence
     {
         private readonly Dsw2026TpiDbContext _context;
+        private readonly IAvailabilityPersistence _availabilityPersistence;
 
-        public AppointmentPersistenceEf(Dsw2026TpiDbContext context)
+        public AppointmentPersistenceEf(
+            Dsw2026TpiDbContext context,
+            IAvailabilityPersistence availabilityPersistence)
         {
             _context = context;
+            _availabilityPersistence = availabilityPersistence;
         }
 
         public async Task<bool> TryCreate(Appointment appointment)
@@ -79,12 +83,22 @@ namespace Dsw2026Tpi.Data.Repositories
                 return false;
             }
 
+            var canRelease = availability.AvailabilityRuleId is null ||
+                await IsCoveredByPlanningAsync(availability);
             var now = DateTime.UtcNow;
 
             appointment.Cancel();
             appointment.UpdatedAt = now;
 
-            availability.Release();
+            if (canRelease)
+            {
+                availability.Release();
+            }
+            else
+            {
+                // Conserva el slot para el historial y permite planificar nuevamente esa hora.
+                availability.Deleted = true;
+            }
             availability.UpdatedAt = now;
 
             try
@@ -98,6 +112,21 @@ namespace Dsw2026Tpi.Data.Repositories
                 return false;
             }
         }
+
+        private async Task<bool> IsCoveredByPlanningAsync(Availability availability)
+        {
+            var date = availability.Date;
+            var rules = await _availabilityPersistence.GetRulesByDoctorAndMonth(
+                availability.DoctorId, date.Year, date.Month);
+            var slotDurationTicks = TimeSpan.FromMinutes(30).Ticks;
+
+            return rules.Any(rule =>
+                rule.DayOfWeek == date.DayOfWeek &&
+                rule.StartTime <= availability.StartTime &&
+                availability.EndTime <= rule.EndTime &&
+                (availability.StartTime - rule.StartTime).Ticks % slotDurationTicks == 0);
+        }
+
         public async Task<bool> TryUpdateStatus(
     Guid appointmentId,
     AppointmentStatus newStatus)

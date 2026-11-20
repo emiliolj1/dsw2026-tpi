@@ -424,7 +424,10 @@ DELETE /api/appointments/{id}
 
 - Solo puede cancelar el paciente propietario.
 - La cita debe estar BOOKED.
-- La cancelación y la liberación del slot son atómicas.
+- En la misma transacción se cancela la cita y se libera el slot si sigue
+  cubierto por la planificación vigente. Si se retiró la franja, el slot se
+  elimina lógicamente y la cita conserva la referencia histórica.
+- Los slots legados sin una regla asociada mantienen la liberación original.
 - Se conserva la historia y se excluye la cita de los turnos activos.
 - Respuesta: HTTP 200, text/plain, cuerpo ok.
 - Para una cita ajena puede utilizarse HTTP 404 para no revelar su existencia.
