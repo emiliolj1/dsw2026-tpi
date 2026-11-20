@@ -63,6 +63,62 @@ public sealed class AgendaBookingConcurrencySqlTests : IClassFixture<SqlServerFi
         Assert.Single(appointments, a => a.Status == AppointmentStatus.BOOKED);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancelarTrasEditarAgenda_SoloReofreceElHorarioSiSiguePlanificado(
+        bool mantenerHorario)
+    {
+        var seed = await SeedAsync();
+        Guid appointmentId;
+
+        using (var bookingScope = _fixture.Factory.Services.CreateScope())
+        {
+            var appointment = await NewAppointmentService(bookingScope.ServiceProvider)
+                .Create(BookingRequest(seed), seed.PatientUserId);
+            appointmentId = appointment.AppointmentsId;
+        }
+
+        using (var planningScope = _fixture.Factory.Services.CreateScope())
+        {
+            AvailabilityModel.DayRequest[] days = mantenerHorario
+                ? [new("MARTES", "10:00", "10:30")]
+                : [];
+            var planning = await NewAvailabilityService(planningScope.ServiceProvider)
+                .Update(new AvailabilityModel.Request(seed.DoctorId, days));
+
+            if (mantenerHorario)
+                Assert.NotEqual(seed.RuleId, Assert.Single(planning.Days).Id);
+            else
+                Assert.Empty(planning.Days);
+        }
+
+        using (var cancelScope = _fixture.Factory.Services.CreateScope())
+        {
+            await NewAppointmentService(cancelScope.ServiceProvider)
+                .Cancel(appointmentId, seed.PatientUserId);
+        }
+
+        using var readScope = _fixture.Factory.Services.CreateScope();
+        var available = await NewAvailabilityService(readScope.ServiceProvider)
+            .GetAvailableSlots(seed.DoctorId);
+        var history = await NewAppointmentService(readScope.ServiceProvider)
+            .Search(new AppointmentModel.SearchRequest(
+                null, seed.DoctorId, seed.PatientDni, SlotDate, Status: "CANCELLED"));
+        var cancelled = Assert.Single(history.Data);
+
+        Assert.Equal(appointmentId, cancelled.AppointmentsId);
+        Assert.Equal(seed.SlotId, cancelled.AvailabilitySlotId);
+        Assert.Equal("CANCELLED", cancelled.AppointmentsStatus);
+        Assert.Equal(mantenerHorario, available.Any(slot =>
+            slot.AvailabilitySlotId == seed.SlotId));
+
+        await using var verify = _fixture.CreateApplicationContext();
+        var storedSlot = await verify.Set<Availability>().AsNoTracking()
+            .SingleAsync(slot => slot.Id == seed.SlotId);
+        Assert.Equal(!mantenerHorario, storedSlot.Deleted);
+    }
+
     [Fact]
     public async Task PutVacio_YReservaEnParalelo_NuncaPierdenUnaReservaConfirmada()
     {
